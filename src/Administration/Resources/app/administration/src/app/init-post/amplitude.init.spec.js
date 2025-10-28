@@ -1,28 +1,47 @@
 import initAmplitude from './amplitude.init';
 import { TelemetryEvent } from '../../core/telemetry/types';
 
-jest.mock('@amplitude/analytics-browser', () => ({
+const mockAmplitudeInstance = {
     add: jest.fn(),
-    init: jest.fn(),
+    init: jest.fn().mockReturnValue({ promise: Promise.resolve() }),
     track: jest.fn(),
     setUserId: jest.fn(),
     getUserId: jest.fn(),
-    setTransport: jest.fn(),
     flush: jest.fn(),
     reset: jest.fn(),
+    config: {},
+};
+
+jest.mock('@amplitude/analytics-browser', () => ({
+    AmplitudeBrowser: jest.fn(() => mockAmplitudeInstance),
+}));
+
+jest.mock('@amplitude/analytics-client-common', () => ({
+    FetchTransport: class FetchTransport {
+        buildResponse(data) {
+            return data;
+        }
+    },
 }));
 
 describe('src/app/post-init/amplitude.init.ts', () => {
-    let mockLoginService;
+    let mockAnalyticsService;
 
     beforeEach(() => {
-        mockLoginService = {
-            addOnLogoutListener: jest.fn(),
+        Object.keys(mockAmplitudeInstance).forEach((key) => {
+            if (typeof mockAmplitudeInstance[key]?.mockClear === 'function') {
+                mockAmplitudeInstance[key].mockClear();
+            }
+        });
+        mockAmplitudeInstance.init.mockReturnValue({ promise: Promise.resolve() });
+
+        mockAnalyticsService = {
+            getToken: jest.fn().mockResolvedValue({ token: 'test-token', expiresAt: Date.now() + 3600 }),
         };
 
         Shopware.Service = jest.fn((serviceName) => {
-            if (serviceName === 'loginService') {
-                return mockLoginService;
+            if (serviceName === 'analyticsService') {
+                return mockAnalyticsService;
             }
             return undefined;
         });
@@ -30,7 +49,15 @@ describe('src/app/post-init/amplitude.init.ts', () => {
         global.Shopware = {
             ...global.Shopware,
             Service: Shopware.Service,
+            Context: {
+                ...global.Shopware?.Context,
+                app: {
+                    systemCurrencyISOCode: 'EUR',
+                },
+            },
         };
+
+        Shopware.Store.get('context').app.analyticsGatewayUrl = 'https://analytics.example.com';
 
         global.repositoryFactoryMock.responses.addResponse({
             method: 'Post',
@@ -51,21 +78,19 @@ describe('src/app/post-init/amplitude.init.ts', () => {
 
     describe('initialization', () => {
         it('add enrichment plugin and calls initialization routine', async () => {
-            const { init, add } = await import('@amplitude/analytics-browser');
-
             await initAmplitude();
 
-            expect(add).toHaveBeenCalled();
-            expect(add).toHaveBeenCalledWith(
+            expect(mockAmplitudeInstance.add).toHaveBeenCalled();
+            expect(mockAmplitudeInstance.add).toHaveBeenCalledWith(
                 expect.objectContaining({
                     name: 'DefaultShopwareProperties',
                     execute: expect.any(Function),
                 }),
             );
 
-            expect(init).toHaveBeenCalled();
-            expect(init).toHaveBeenCalledWith(
-                expect.any(String),
+            expect(mockAmplitudeInstance.init).toHaveBeenCalled();
+            expect(mockAmplitudeInstance.init).toHaveBeenCalledWith(
+                'placeholder-apikey',
                 undefined,
                 expect.objectContaining({
                     autocapture: false,
@@ -79,6 +104,160 @@ describe('src/app/post-init/amplitude.init.ts', () => {
                     fetchRemoteConfig: false,
                 }),
             );
+        });
+
+        it('should return early when analyticsGatewayUrl is not set', async () => {
+            Shopware.Store.get('context').app.analyticsGatewayUrl = null;
+
+            await initAmplitude();
+
+            expect(mockAmplitudeInstance.init).not.toHaveBeenCalled();
+        });
+
+        it('should execute enrichment plugin with route properties when router is available', async () => {
+            Object.defineProperty(window.screen, 'orientation', {
+                value: { type: 'landscape-primary' },
+                configurable: true,
+            });
+
+            const mockRoute = {
+                value: {
+                    name: 'sw.product.detail',
+                    path: '/sw/product/detail/123',
+                    fullPath: '/sw/product/detail/123?tab=general',
+                },
+            };
+
+            Shopware.Application.view = {
+                router: {
+                    currentRoute: mockRoute,
+                },
+            };
+
+            await initAmplitude();
+
+            const enrichmentPlugin = mockAmplitudeInstance.add.mock.calls[0][0];
+            const mockEvent = { event_properties: {} };
+            const result = await enrichmentPlugin.execute(mockEvent);
+
+            expect(result.event_properties).toEqual(
+                expect.objectContaining({
+                    sw_page_name: 'sw.product.detail',
+                    sw_page_path: '/sw/product/detail/123',
+                    sw_page_full_path: '/sw/product/detail/123?tab=general',
+                    sw_screen_orientation: 'landscape',
+                }),
+            );
+        });
+
+        it('should execute enrichment plugin without route properties when router is not available', async () => {
+            Object.defineProperty(window.screen, 'orientation', {
+                value: { type: 'portrait-primary' },
+                configurable: true,
+            });
+
+            Shopware.Application.view = null;
+
+            await initAmplitude();
+
+            const enrichmentPlugin = mockAmplitudeInstance.add.mock.calls[0][0];
+            const mockEvent = { event_properties: {} };
+            const result = await enrichmentPlugin.execute(mockEvent);
+
+            expect(result.event_properties.sw_page_name).toBeUndefined();
+            expect(result.event_properties.sw_page_path).toBeUndefined();
+            expect(result.event_properties.sw_page_full_path).toBeUndefined();
+        });
+    });
+
+    describe('AuthenticatedFetchTransport', () => {
+        let originalFetch;
+
+        beforeEach(() => {
+            originalFetch = global.fetch;
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+        });
+
+        it('should send request with auth header when token is available', async () => {
+            const mockResponse = {
+                ok: true,
+                status: 200,
+                text: jest.fn().mockResolvedValue('{"code": 200}'),
+            };
+            global.fetch = jest.fn().mockResolvedValue(mockResponse);
+
+            await initAmplitude();
+
+            const transport = mockAmplitudeInstance.config.transportProvider;
+            await transport.send('https://analytics.example.com/event', { events: [] });
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                'https://analytics.example.com/event',
+                expect.objectContaining({
+                    method: 'POST',
+                    headers: expect.objectContaining({
+                        'Content-Type': 'application/json',
+                        Accept: '*/*',
+                        Authorization: 'Bearer test-token',
+                    }),
+                }),
+            );
+        });
+
+        it('should return 401 response when token fetch fails', async () => {
+            mockAnalyticsService.getToken.mockRejectedValue(new Error('Token unavailable'));
+
+            global.fetch = jest.fn();
+
+            await initAmplitude();
+
+            const transport = mockAmplitudeInstance.config.transportProvider;
+            const result = await transport.send('https://analytics.example.com/event', { events: [] });
+
+            expect(global.fetch).not.toHaveBeenCalled();
+            expect(result).toEqual({ code: 401, message: 'Auth token unavailable' });
+        });
+
+        it('should handle non-JSON response gracefully', async () => {
+            const mockResponse = {
+                ok: true,
+                status: 200,
+                text: jest.fn().mockResolvedValue('not-json'),
+            };
+            global.fetch = jest.fn().mockResolvedValue(mockResponse);
+
+            await initAmplitude();
+
+            const transport = mockAmplitudeInstance.config.transportProvider;
+            const result = await transport.send('https://analytics.example.com/event', { events: [] });
+
+            expect(result).toEqual({ code: 200 });
+        });
+
+        it('should throw error when fetch is undefined', async () => {
+            global.fetch = undefined;
+
+            await initAmplitude();
+
+            const transport = mockAmplitudeInstance.config.transportProvider;
+
+            await expect(transport.send('https://analytics.example.com/event', { events: [] })).rejects.toThrow(
+                'FetchTransport is not supported',
+            );
+        });
+
+        it('should return network error response when fetch throws', async () => {
+            global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+            await initAmplitude();
+
+            const transport = mockAmplitudeInstance.config.transportProvider;
+            const result = await transport.send('https://analytics.example.com/event', { events: [] });
+
+            expect(result).toEqual({ code: 0, message: 'Network error' });
         });
     });
 
@@ -152,14 +331,12 @@ describe('src/app/post-init/amplitude.init.ts', () => {
                 },
             ],
         ])('handles event', async (telemetryEvent, trackedData) => {
-            const { track } = await import('@amplitude/analytics-browser');
-
             await initAmplitude();
 
             Shopware.Utils.EventBus.emit('telemetry', telemetryEvent);
 
-            expect(track).toHaveBeenCalled();
-            expect(track).toHaveBeenCalledWith(trackedData.eventName, trackedData.properties);
+            expect(mockAmplitudeInstance.track).toHaveBeenCalled();
+            expect(mockAmplitudeInstance.track).toHaveBeenCalledWith(trackedData.eventName, trackedData.properties);
         });
     });
 
@@ -174,8 +351,6 @@ describe('src/app/post-init/amplitude.init.ts', () => {
         });
 
         it('should set user ID in format "shopId:userId"', async () => {
-            const amplitude = await import('@amplitude/analytics-browser');
-
             await initAmplitude();
 
             const identifyEvent = new TelemetryEvent('identify', {
@@ -184,12 +359,10 @@ describe('src/app/post-init/amplitude.init.ts', () => {
 
             Shopware.Utils.EventBus.emit('telemetry', identifyEvent);
 
-            expect(amplitude.setUserId).toHaveBeenCalledWith(`${testShopId}:${testUserId}`);
+            expect(mockAmplitudeInstance.setUserId).toHaveBeenCalledWith(`${testShopId}:${testUserId}`);
         });
 
         it('should update user ID when a different user identifies', async () => {
-            const amplitude = await import('@amplitude/analytics-browser');
-
             await initAmplitude();
 
             const firstIdentifyEvent = new TelemetryEvent('identify', {
@@ -198,9 +371,9 @@ describe('src/app/post-init/amplitude.init.ts', () => {
 
             Shopware.Utils.EventBus.emit('telemetry', firstIdentifyEvent);
 
-            expect(amplitude.setUserId).toHaveBeenCalledWith(`${testShopId}:${testUserId}`);
+            expect(mockAmplitudeInstance.setUserId).toHaveBeenCalledWith(`${testShopId}:${testUserId}`);
 
-            amplitude.setUserId.mockClear();
+            mockAmplitudeInstance.setUserId.mockClear();
 
             const anotherUserId = '48dad3c3-89b9-47a1-bf67-a1cd6fc68952';
             const secondIdentifyEvent = new TelemetryEvent('identify', {
@@ -209,7 +382,7 @@ describe('src/app/post-init/amplitude.init.ts', () => {
 
             Shopware.Utils.EventBus.emit('telemetry', secondIdentifyEvent);
 
-            expect(amplitude.setUserId).toHaveBeenCalledWith(`${testShopId}:${anotherUserId}`);
+            expect(mockAmplitudeInstance.setUserId).toHaveBeenCalledWith(`${testShopId}:${anotherUserId}`);
         });
     });
 
@@ -223,13 +396,11 @@ describe('src/app/post-init/amplitude.init.ts', () => {
         });
 
         it('should track Login event when a identify telemetry event with a different userId arrives', async () => {
-            const amplitude = await import('@amplitude/analytics-browser');
-
             let amplitudeUserId = null;
-            jest.spyOn(amplitude, 'setUserId').mockImplementation((userId) => {
+            mockAmplitudeInstance.setUserId.mockImplementation((userId) => {
                 amplitudeUserId = userId;
             });
-            jest.spyOn(amplitude, 'getUserId').mockImplementation(() => amplitudeUserId);
+            mockAmplitudeInstance.getUserId.mockImplementation(() => amplitudeUserId);
 
             await initAmplitude();
 
@@ -240,7 +411,7 @@ describe('src/app/post-init/amplitude.init.ts', () => {
                     userId: newUserId,
                 }),
             );
-            expect(amplitude.track).toHaveBeenCalledWith('Login');
+            expect(mockAmplitudeInstance.track).toHaveBeenCalledWith('Login');
 
             newUserId = 'newUserId-2';
             Shopware.Utils.EventBus.emit(
@@ -249,7 +420,7 @@ describe('src/app/post-init/amplitude.init.ts', () => {
                     userId: newUserId,
                 }),
             );
-            expect(amplitude.track).toHaveBeenCalledWith('Login');
+            expect(mockAmplitudeInstance.track).toHaveBeenCalledWith('Login');
 
             const sameUserId = newUserId;
             Shopware.Utils.EventBus.emit(
@@ -259,11 +430,21 @@ describe('src/app/post-init/amplitude.init.ts', () => {
                 }),
             );
 
-            expect(amplitude.track).toHaveBeenCalledTimes(2);
+            expect(mockAmplitudeInstance.track).toHaveBeenCalledTimes(2);
         });
 
         it('should track Logout event when a reset telemetry event arrives', async () => {
-            const amplitude = await import('@amplitude/analytics-browser');
+            await initAmplitude();
+
+            const resetEvent = new TelemetryEvent('reset', {});
+
+            Shopware.Utils.EventBus.emit('telemetry', resetEvent);
+
+            expect(mockAmplitudeInstance.track).toHaveBeenCalledWith('Logout');
+        });
+
+        it('should call flush and reset after Logout event', async () => {
+            jest.useFakeTimers();
 
             await initAmplitude();
 
@@ -271,7 +452,15 @@ describe('src/app/post-init/amplitude.init.ts', () => {
 
             Shopware.Utils.EventBus.emit('telemetry', resetEvent);
 
-            expect(amplitude.track).toHaveBeenCalledWith('Logout');
+            expect(mockAmplitudeInstance.flush).not.toHaveBeenCalled();
+            expect(mockAmplitudeInstance.reset).not.toHaveBeenCalled();
+
+            jest.runAllTimers();
+
+            expect(mockAmplitudeInstance.flush).toHaveBeenCalled();
+            expect(mockAmplitudeInstance.reset).toHaveBeenCalled();
+
+            jest.useRealTimers();
         });
     });
 });

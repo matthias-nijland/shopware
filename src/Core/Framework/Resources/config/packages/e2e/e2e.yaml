@@ -5,6 +5,9 @@ framework:
                 dsn: "sync://"
 
 shopware:
+    analytics:
+        gateway_url: 'https://product-analytics.staging.shopware.io'
+
     media:
         enable_url_upload_feature: true
         enable_url_validation: false

@@ -28,6 +28,7 @@ class Configuration implements ConfigurationInterface
                 ->append($this->createCdnSection())
                 ->append($this->createApiSection())
                 ->append($this->createStoreSection())
+                ->append($this->createAnalyticsSection())
                 ->append($this->createCartSection())
                 ->append($this->createSalesChannelContextSection())
                 ->append($this->createAdminWorkerSection())
@@ -216,6 +217,19 @@ class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
                 ->booleanNode('frw')->end()
+            ->end();
+
+        return $rootNode;
+    }
+
+    private function createAnalyticsSection(): ArrayNodeDefinition
+    {
+        $rootNode = (new TreeBuilder('analytics'))->getRootNode();
+        $rootNode
+            ->children()
+                ->scalarNode('gateway_url')
+                    ->defaultValue('https://product-analytics.shopware.io')
+                ->end()
             ->end();
 
         return $rootNode;

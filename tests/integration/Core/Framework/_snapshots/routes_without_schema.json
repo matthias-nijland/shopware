@@ -120,6 +120,7 @@
     "/acl-role",
     "/acl-role/{roleId}",
     "/acl-role/{roleId}",
+    "/analytics/token",
     "/app-system/action-button/run/{id}",
     "/app-system/action-button/{entity}/{view}",
     "/app-system/cms/blocks",

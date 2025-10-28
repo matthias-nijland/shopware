@@ -1,27 +1,73 @@
 /**
  * @sw-package framework
  */
+import { AmplitudeBrowser } from '@amplitude/analytics-browser';
+import { FetchTransport } from '@amplitude/analytics-client-common';
+import type { Payload, Response as AmplitudeResponse } from '@amplitude/analytics-types';
 import { string } from 'src/core/service/util.service';
 import type { TelemetryEvent, EventTypes, TrackableType } from '../../core/telemetry/types';
+
+class AuthenticatedFetchTransport extends FetchTransport {
+    async send(serverUrl: string, payload: Payload): Promise<AmplitudeResponse | null> {
+        if (typeof fetch === 'undefined') {
+            throw new Error('FetchTransport is not supported');
+        }
+
+        let authHeader: Record<string, string> = {};
+        try {
+            const tokenData = await Shopware.Service('analyticsService').getToken();
+            authHeader = { Authorization: `Bearer ${tokenData.token}` };
+        } catch {
+            return this.buildResponse({ code: 401, message: 'Auth token unavailable' });
+        }
+
+        const options: RequestInit = {
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: '*/*',
+                ...authHeader,
+            },
+            body: JSON.stringify(payload),
+            method: 'POST',
+        };
+
+        let response: Response;
+        try {
+            response = await fetch(serverUrl, options);
+        } catch {
+            // code 0 typically used for network errors to distinguish "no response" from actual HTTP error codes
+            return this.buildResponse({ code: 0, message: 'Network error' });
+        }
+
+        const responseText = await response.text();
+
+        try {
+            return this.buildResponse(JSON.parse(responseText) as Record<string, unknown>);
+        } catch {
+            return this.buildResponse({ code: response.status });
+        }
+    }
+}
+
+let amplitude: AmplitudeBrowser | null = null;
 
 /**
  * @private
  */
 export default async function (): Promise<void> {
-    const amplitude = await import('@amplitude/analytics-browser');
-
-    Shopware.Service('loginService').addOnLogoutListener(() => {
-        amplitude.setTransport('beacon');
-    });
+    const analyticsGatewayUrl = Shopware.Store.get('context').app.analyticsGatewayUrl;
+    if (!analyticsGatewayUrl) {
+        return;
+    }
 
     let defaultLanguageName = '';
-
     try {
         defaultLanguageName = await getDefaultLanguageName();
     } catch {
         defaultLanguageName = 'N/A';
     }
 
+    amplitude = new AmplitudeBrowser();
     amplitude.add({
         name: 'DefaultShopwareProperties',
         execute: (amplitudeEvent) => {
@@ -53,7 +99,8 @@ export default async function (): Promise<void> {
 
     // check for consent
 
-    amplitude.init('a04bb926f471ce883bc219814fc9577', undefined, {
+    // The real key will be added by the gateway
+    await amplitude.init('placeholder-apikey', undefined, {
         autocapture: false,
         serverZone: 'EU',
         appVersion: Shopware.Store.get('context').app.config.version as string,
@@ -63,88 +110,95 @@ export default async function (): Promise<void> {
             platform: false,
         },
         fetchRemoteConfig: false,
-        // serverUrl: use proxy server url here, e.g. usage-data.shopware.io/product-analytics,
-    });
+        serverUrl: `${analyticsGatewayUrl}/event`,
+    }).promise;
 
-    function pushTelemetryEventToAmplitude(telemetryEvent: TelemetryEvent<EventTypes>) {
-        if (isEventOfType('page_change', telemetryEvent)) {
-            amplitude.track('Page Viewed', {
-                sw_route_from_name: telemetryEvent.eventData.from.name,
-                sw_route_from_href: telemetryEvent.eventData.from.path,
-                sw_route_to_name: telemetryEvent.eventData.to.name,
-                sw_route_to_href: telemetryEvent.eventData.to.path,
-                sw_route_to_query: telemetryEvent.eventData.to.fullPath.split('?')[1],
-            });
-            return;
-        }
-
-        if (isEventOfType('identify', telemetryEvent)) {
-            const shopId = Shopware.Store.get('context').app.config.shopId;
-            const newUserId = `${shopId}:${telemetryEvent.eventData.userId}`;
-
-            const previousUserId = amplitude.getUserId();
-            amplitude.setUserId(newUserId);
-            // add more user properties via amplitude.identify(); ?
-
-            if (newUserId && previousUserId !== newUserId) {
-                amplitude.track('Login');
-            }
-
-            return;
-        }
-
-        if (isEventOfType('reset', telemetryEvent)) {
-            amplitude.track('Logout');
-
-            // we need a timeout if we want to include the click on the logout button
-            setTimeout(() => {
-                amplitude.flush();
-                amplitude.reset();
-            }, 0);
-
-            return;
-        }
-
-        if (isEventOfType('user_interaction', telemetryEvent)) {
-            const { target, originalEvent } = telemetryEvent.eventData;
-
-            const eventProperties: Record<string, TrackableType> = {};
-
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call
-            const capitalizedTagName = string.capitalizeString(target.tagName);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call
-            const capitalizedEventName = string.capitalizeString(originalEvent.type);
-
-            let eventName = `${capitalizedTagName} ${capitalizedEventName}`;
-
-            if (target.tagName === 'A') {
-                eventName = 'Link Visited';
-
-                eventProperties.sw_link_href = target.getAttribute('href') ?? '';
-                eventProperties.sw_link_type = target.getAttribute('target') === '_blank' ? 'external' : 'internal';
-            }
-
-            target.getAttributeNames().forEach((attributeName) => {
-                if (attributeName.startsWith('data-analytics-')) {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call
-                    const propertyName = string.snakeCase(attributeName.replace('data-analytics-', 'sw_element_'));
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    eventProperties[propertyName] = target.getAttribute(attributeName);
-                }
-            });
-
-            if (originalEvent instanceof MouseEvent) {
-                eventProperties.sw_pointer_x = originalEvent.clientX;
-                eventProperties.sw_pointer_y = originalEvent.clientY;
-                eventProperties.sw_pointer_button = originalEvent.buttons;
-            }
-
-            amplitude.track(eventName, eventProperties);
-        }
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+    (amplitude as any).config.transportProvider = new AuthenticatedFetchTransport();
 
     // eslint-disable-next-line listeners/no-missing-remove-event-listener
     Shopware.Utils.EventBus.on('telemetry', pushTelemetryEventToAmplitude);
+}
+
+function pushTelemetryEventToAmplitude(telemetryEvent: TelemetryEvent<EventTypes>) {
+    if (amplitude === null) {
+        return;
+    }
+
+    if (isEventOfType('page_change', telemetryEvent)) {
+        amplitude.track('Page Viewed', {
+            sw_route_from_name: telemetryEvent.eventData.from.name,
+            sw_route_from_href: telemetryEvent.eventData.from.path,
+            sw_route_to_name: telemetryEvent.eventData.to.name,
+            sw_route_to_href: telemetryEvent.eventData.to.path,
+            sw_route_to_query: telemetryEvent.eventData.to.fullPath.split('?')[1],
+        });
+        return;
+    }
+
+    if (isEventOfType('identify', telemetryEvent)) {
+        const shopId = Shopware.Store.get('context').app.config.shopId;
+        const newUserId = `${shopId}:${telemetryEvent.eventData.userId}`;
+
+        const previousUserId = amplitude.getUserId();
+        amplitude.setUserId(newUserId);
+        // add more user properties via amplitude.identify(); ?
+
+        if (newUserId && previousUserId !== newUserId) {
+            amplitude.track('Login');
+        }
+
+        return;
+    }
+
+    if (isEventOfType('reset', telemetryEvent)) {
+        amplitude.track('Logout');
+
+        // we need a timeout if we want to include the click on the logout button
+        setTimeout(() => {
+            amplitude?.flush();
+            amplitude?.reset();
+        }, 0);
+
+        return;
+    }
+
+    if (isEventOfType('user_interaction', telemetryEvent)) {
+        const { target, originalEvent } = telemetryEvent.eventData;
+
+        const eventProperties: Record<string, TrackableType> = {};
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call
+        const capitalizedTagName = string.capitalizeString(target.tagName);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call
+        const capitalizedEventName = string.capitalizeString(originalEvent.type);
+
+        let eventName = `${capitalizedTagName} ${capitalizedEventName}`;
+
+        if (target.tagName === 'A') {
+            eventName = 'Link Visited';
+
+            eventProperties.sw_link_href = target.getAttribute('href') ?? '';
+            eventProperties.sw_link_type = target.getAttribute('target') === '_blank' ? 'external' : 'internal';
+        }
+
+        target.getAttributeNames().forEach((attributeName) => {
+            if (attributeName.startsWith('data-analytics-')) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call
+                const propertyName = string.snakeCase(attributeName.replace('data-analytics-', 'sw_element_'));
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                eventProperties[propertyName] = target.getAttribute(attributeName);
+            }
+        });
+
+        if (originalEvent instanceof MouseEvent) {
+            eventProperties.sw_pointer_x = originalEvent.clientX;
+            eventProperties.sw_pointer_y = originalEvent.clientY;
+            eventProperties.sw_pointer_button = originalEvent.buttons;
+        }
+
+        amplitude.track(eventName, eventProperties);
+    }
 }
 
 async function getDefaultLanguageName(): Promise<string> {

@@ -1,4 +1,7 @@
 shopware:
+    analytics:
+        gateway_url: 'https://product-analytics.staging.shopware.io'
+
     filesystem:
         private:
             type: "memory"
