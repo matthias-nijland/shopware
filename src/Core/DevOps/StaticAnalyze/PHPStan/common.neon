@@ -25,7 +25,6 @@ parameters:
         booleansInConditions: false
         booleansInLoopConditions: false
         requireParentConstructorCall: false
-        disallowedEmpty: false
         disallowedShortTernary: false
         dynamicCallOnStaticMethod: false
         strictArrayFilter: false

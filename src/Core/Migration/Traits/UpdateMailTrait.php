@@ -35,7 +35,7 @@ trait UpdateMailTrait
         }
 
         $translations = $this->getTranslationIds($connection, $languages, $update->getType());
-        if (empty($translations)) {
+        if ($translations === []) {
             return;
         }
 
@@ -60,12 +60,12 @@ trait UpdateMailTrait
         $languages = array_merge([Defaults::LANGUAGE_SYSTEM], $this->getLanguageIds($connection, 'en-GB'));
         $languages = array_unique(array_filter($languages));
 
-        if (empty($languages)) {
+        if ($languages === []) {
             return;
         }
 
         $translations = $this->getTranslationIds($connection, $languages, $update->getType());
-        if (empty($translations)) {
+        if ($translations === []) {
             return;
         }
 
@@ -89,12 +89,12 @@ trait UpdateMailTrait
         $languages = array_merge([Defaults::LANGUAGE_SYSTEM], $this->getLanguageIds($connection, 'en-GB'));
         $languages = array_unique(array_filter($languages));
 
-        if (empty($languages)) {
+        if ($languages === []) {
             return;
         }
 
         $translations = $this->getTranslationIds($connection, $languages, $update->getType());
-        if (empty($translations)) {
+        if ($translations === []) {
             return;
         }
 
@@ -115,12 +115,12 @@ trait UpdateMailTrait
     private function updateDeMailSubject(Connection $connection, MailSubjectUpdate $update): void
     {
         $languages = $this->getLanguageIds($connection, 'de-DE');
-        if (!$languages) {
+        if ($languages === []) {
             return;
         }
 
         $translations = $this->getTranslationIds($connection, $languages, $update->getType());
-        if (empty($translations)) {
+        if ($translations === []) {
             return;
         }
 
