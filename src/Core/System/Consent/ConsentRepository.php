@@ -6,7 +6,6 @@ use Doctrine\DBAL\Connection;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Uuid\Uuid;
-use Shopware\Core\System\Consent\DTO\ConsentStateLogRecord;
 use Shopware\Core\System\Consent\DTO\ConsentStateRecord;
 
 /**
@@ -77,49 +76,5 @@ class ConsentRepository
                 'created_at' => $now,
             ]);
         }
-
-        $this->connection->insert('consent_log', [
-            'id' => Uuid::randomBytes(),
-            'name' => $consent->getName(),
-            'identifier' => $identifier ? Uuid::fromHexToBytes($identifier) : null,
-            'state' => $state->value,
-            'actor_id' => Uuid::fromHexToBytes($actorId),
-            'created_at' => $now,
-        ]);
-    }
-
-    /**
-     * @return list<ConsentStateLogRecord>
-     */
-    public function getHistory(string $consentName, ?string $identifier): array
-    {
-        $result = $this->connection->fetchAllAssociative(
-            'SELECT state, actor_id, created_at
-             FROM consent_log
-             WHERE name = :name AND identifier <=> :identifier
-             ORDER BY created_at DESC',
-            [
-                'name' => $consentName,
-                'identifier' => $identifier ? Uuid::fromHexToBytes($identifier) : null,
-            ]
-        );
-
-        return array_map(
-            function (array $row) use ($identifier) {
-                $createdAt = \DateTimeImmutable::createFromFormat(Defaults::STORAGE_DATE_TIME_FORMAT, $row['created_at']);
-
-                if ($createdAt === false) {
-                    throw ConsentException::invalidConsent();
-                }
-
-                return new ConsentStateLogRecord(
-                    ConsentStatus::from($row['state']),
-                    $identifier,
-                    Uuid::fromBytesToHex($row['actor_id']),
-                    $createdAt
-                );
-            },
-            $result,
-        );
     }
 }

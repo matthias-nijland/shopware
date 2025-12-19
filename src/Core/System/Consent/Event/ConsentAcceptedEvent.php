@@ -16,7 +16,8 @@ readonly class ConsentAcceptedEvent implements Hookable
     public function __construct(
         public string $consentName,
         public ConsentScope $consentScope,
-        public string $identifier
+        public string $identifier,
+        public string $actorId,
     ) {
     }
 

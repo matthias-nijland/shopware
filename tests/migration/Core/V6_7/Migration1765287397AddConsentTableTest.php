@@ -46,6 +46,6 @@ class Migration1765287397AddConsentTableTest extends TestCase
         static::assertCount(7, $consentStateCols);
 
         $consentLogCols = $sm->listTableColumns('consent_log');
-        static::assertCount(6, $consentLogCols);
+        static::assertCount(3, $consentLogCols);
     }
 }

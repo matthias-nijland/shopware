@@ -11,7 +11,6 @@ use Shopware\Core\System\Consent\ConsentRepository;
 use Shopware\Core\System\Consent\ConsentScope;
 use Shopware\Core\System\Consent\ConsentStatus;
 use Shopware\Core\System\Consent\DTO\ConsentState;
-use Shopware\Core\System\Consent\DTO\ConsentStateLogRecord;
 use Shopware\Core\System\Consent\Event\ConsentAcceptedEvent;
 use Shopware\Core\System\Consent\Event\ConsentRevokedEvent;
 
@@ -114,7 +113,7 @@ class ConsentService
             $identifier
         );
 
-        $this->eventDispatcher->dispatch(new ConsentAcceptedEvent($consent->getName(), $consent->getScope(), $identifier));
+        $this->eventDispatcher->dispatch(new ConsentAcceptedEvent($consent->getName(), $consent->getScope(), $identifier, $identifier));
 
         $this->invalidateState();
     }
@@ -136,23 +135,9 @@ class ConsentService
             ConsentStatus::REVOKED,
             $identifier
         );
-        $this->eventDispatcher->dispatch(new ConsentRevokedEvent($consent->getName(), $consent->getScope(), $identifier));
+        $this->eventDispatcher->dispatch(new ConsentRevokedEvent($consent->getName(), $consent->getScope(), $identifier, $identifier));
 
         $this->invalidateState();
-    }
-
-    /**
-     * @return list<ConsentStateLogRecord>
-     */
-    public function getHistory(string $name, ?string $identifier = null): array
-    {
-        $consent = $this->getConsentDefinition($name);
-
-        if ($consent->getScope() !== ConsentScope::GLOBAL && $identifier === null) {
-            throw ConsentException::identifierRequired();
-        }
-
-        return $this->consentRepository->getHistory($consent->getName(), $identifier);
     }
 
     private function getConsentDefinition(string $name): ConsentDefinition

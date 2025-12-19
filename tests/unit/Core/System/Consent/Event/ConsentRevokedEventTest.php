@@ -20,11 +20,13 @@ class ConsentRevokedEventTest extends TestCase
         $event = new ConsentRevokedEvent(
             'my-consent',
             ConsentScope::ADMIN_USER,
+            'consent-identifier',
             'user-456'
         );
 
         static::assertSame('my-consent', $event->consentName);
         static::assertSame(ConsentScope::ADMIN_USER, $event->consentScope);
-        static::assertSame('user-456', $event->identifier);
+        static::assertSame('consent-identifier', $event->identifier);
+        static::assertSame('user-456', $event->actorId);
     }
 }
