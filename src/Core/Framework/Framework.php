@@ -93,7 +93,6 @@ class Framework extends Bundle
         $loader->load('telemetry.xml');
         $loader->load('notification.xml');
         $loader->load('sso.xml');
-        $loader->load('analytics.xml');
 
         if ($container->getParameter('kernel.environment') === 'test') {
             $loader->load('services_test.xml');
