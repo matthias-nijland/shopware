@@ -48,12 +48,9 @@ class Migration1717573310ImportExportTechnicalNameRequired extends MigrationStep
             );
         }
 
-        $manager = $connection->createSchemaManager();
-        $columns = $manager->listTableColumns(ImportExportProfileDefinition::ENTITY_NAME);
-
-        if (\array_key_exists('technical_name', $columns) && !$columns['technical_name']->getNotnull()) {
-            $connection
-                ->executeStatement('ALTER TABLE `import_export_profile` MODIFY COLUMN `technical_name` VARCHAR(255) NOT NULL');
+        $tableImportExportProfile = $connection->createSchemaManager()->introspectTableByUnquotedName(ImportExportProfileDefinition::ENTITY_NAME);
+        if ($tableImportExportProfile->hasColumn('technical_name') && !$tableImportExportProfile->getColumn('technical_name')->getNotnull()) {
+            $connection->executeStatement('ALTER TABLE `import_export_profile` MODIFY COLUMN `technical_name` VARCHAR(255) NOT NULL');
         }
     }
 

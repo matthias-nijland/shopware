@@ -14,8 +14,10 @@ use Shopware\Core\Framework\Log\Package;
 #[Package('framework')]
 class MigrationQueryGenerator
 {
-    public function __construct(private readonly Connection $connection, private readonly SchemaBuilder $schemaBuilder)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly SchemaBuilder $schemaBuilder
+    ) {
     }
 
     /**
@@ -42,7 +44,7 @@ class MigrationQueryGenerator
     private function getAlterTableQueries(EntityDefinition $definition): array
     {
         $schemaManager = $this->connection->createSchemaManager();
-        $originalTableSchema = $schemaManager->introspectTable($definition->getEntityName());
+        $originalTableSchema = $schemaManager->introspectTableByUnquotedName($definition->getEntityName());
 
         // Indexes are not supported, so we remove them from both tables
         $this->dropIndexes($originalTableSchema);
@@ -79,7 +81,7 @@ class MigrationQueryGenerator
                 continue;
             }
 
-            $table->dropIndex($index->getName());
+            $table->dropIndex($index->getObjectName()->toString());
         }
     }
 }

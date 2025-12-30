@@ -4,6 +4,7 @@ namespace Shopware\Core\Migration\V6_7;
 
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Checkout\Payment\PaymentMethodDefinition;
+use Shopware\Core\Checkout\Shipping\ShippingMethodDefinition;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Migration\MigrationStep;
 
@@ -21,15 +22,15 @@ class Migration1697112044PaymentAndShippingTechnicalNameRequired extends Migrati
     public function update(Connection $connection): void
     {
         $manager = $connection->createSchemaManager();
-        $columns = $manager->listTableColumns(PaymentMethodDefinition::ENTITY_NAME);
+        $tablePaymentMethod = $manager->introspectTableByUnquotedName(PaymentMethodDefinition::ENTITY_NAME);
 
-        if (\array_key_exists('technical_name', $columns) && !$columns['technical_name']->getNotnull()) {
+        if ($tablePaymentMethod->hasColumn('technical_name') && !$tablePaymentMethod->getColumn('technical_name')->getNotnull()) {
             $connection->executeStatement('ALTER TABLE `payment_method` MODIFY COLUMN `technical_name` VARCHAR(255) NOT NULL');
         }
 
-        $columns = $manager->listTableColumns('shipping_method');
+        $tableShippingMethod = $manager->introspectTableByUnquotedName(ShippingMethodDefinition::ENTITY_NAME);
 
-        if (\array_key_exists('technical_name', $columns) && !$columns['technical_name']->getNotnull()) {
+        if ($tableShippingMethod->hasColumn('technical_name') && !$tableShippingMethod->getColumn('technical_name')->getNotnull()) {
             $connection->executeStatement('ALTER TABLE `shipping_method` MODIFY COLUMN `technical_name` VARCHAR(255) NOT NULL');
         }
     }

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Migration\V6_7\Migration1742568836CreateThemeRuntimeConfigTable;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -16,6 +17,8 @@ use Shopware\Core\Migration\V6_7\Migration1742568836CreateThemeRuntimeConfigTabl
 #[CoversClass(Migration1742568836CreateThemeRuntimeConfigTable::class)]
 class Migration1742568836CreateThemeRuntimeConfigTableTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -33,8 +36,7 @@ class Migration1742568836CreateThemeRuntimeConfigTableTest extends TestCase
     {
         $this->connection->executeStatement('DROP TABLE IF EXISTS `theme_runtime_config`;');
 
-        $sm = $this->connection->createSchemaManager();
-        static::assertFalse($sm->tablesExist(['theme_runtime_config']));
+        static::assertFalse($this->getSchemaManager($this->connection)->tableExists('theme_runtime_config'));
 
         $migration = new Migration1742568836CreateThemeRuntimeConfigTable();
         static::assertSame(1742568836, $migration->getCreationTimestamp());
@@ -44,15 +46,11 @@ class Migration1742568836CreateThemeRuntimeConfigTableTest extends TestCase
         $migration->update($this->connection);
 
         // check updated table
-        static::assertTrue($sm->tablesExist(['theme_runtime_config']));
+        static::assertTrue($this->getSchemaManager($this->connection)->tableExists('theme_runtime_config'));
 
-        $cols = $sm->listTableColumns('theme_runtime_config');
-        static::assertCount(7, $cols);
+        $scriptFilesColumn = $this->getColumnOfTable($this->connection, 'theme_runtime_config', 'script_files');
+        static::assertFalse($scriptFilesColumn->getNotnull());
 
-        static::assertArrayHasKey('script_files', $cols);
-        static::assertFalse($cols['script_files']->getNotnull());
-
-        $indexes = $sm->listTableIndexes('theme_runtime_config');
-        static::assertArrayHasKey('idx.technical_name', $indexes);
+        static::assertTrue($this->indexExists($this->connection, 'theme_runtime_config', 'idx.technical_name'));
     }
 }

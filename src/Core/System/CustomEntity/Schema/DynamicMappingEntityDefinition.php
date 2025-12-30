@@ -18,12 +18,18 @@ use Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter
 #[Package('framework')]
 class DynamicMappingEntityDefinition extends MappingEntityDefinition
 {
+    /**
+     * @var non-empty-string
+     */
     protected string $name;
 
     protected string $source;
 
     protected string $reference;
 
+    /**
+     * @param non-empty-string $name
+     */
     public static function create(string $source, string $reference, string $name): DynamicMappingEntityDefinition
     {
         $self = new self();

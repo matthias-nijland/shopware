@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Migration\V6_7\Migration1760438732AddConsumedToPaymentToken;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -14,6 +15,8 @@ use Shopware\Core\Migration\V6_7\Migration1760438732AddConsumedToPaymentToken;
 #[CoversClass(Migration1760438732AddConsumedToPaymentToken::class)]
 class Migration1760438732AddConsumedToPaymentTokenTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -34,15 +37,12 @@ class Migration1760438732AddConsumedToPaymentTokenTest extends TestCase
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $existingColumns = $this->connection->createSchemaManager()->listTableColumns('payment_token');
-        static::assertArrayHasKey('consumed', $existingColumns);
+        static::assertTrue($this->columnExists($this->connection, 'payment_token', 'consumed'));
     }
 
     private function rollback(): void
     {
-        $existingColumns = $this->connection->createSchemaManager()->listTableColumns('payment_token');
-
-        if (\array_key_exists('consumed', $existingColumns)) {
+        if ($this->columnExists($this->connection, 'payment_token', 'consumed')) {
             $this->connection->executeStatement('ALTER TABLE `payment_token` DROP COLUMN `consumed`;');
         }
     }

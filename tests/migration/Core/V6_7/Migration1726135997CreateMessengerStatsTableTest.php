@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Migration\V6_7\Migration1726135997CreateMessengerStatsTable;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -16,6 +17,8 @@ use Shopware\Core\Migration\V6_7\Migration1726135997CreateMessengerStatsTable;
 #[CoversClass(Migration1726135997CreateMessengerStatsTable::class)]
 class Migration1726135997CreateMessengerStatsTableTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -37,14 +40,10 @@ class Migration1726135997CreateMessengerStatsTableTest extends TestCase
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $schemaManager = $this->connection->createSchemaManager();
-        $columns = $schemaManager->listTableColumns('messenger_stats');
-
-        static::assertNotEmpty($columns);
-        static::assertArrayHasKey('id', $columns);
-        static::assertArrayHasKey('message_type', $columns);
-        static::assertArrayHasKey('time_in_queue', $columns);
-        static::assertArrayHasKey('created_at', $columns);
+        static::assertTrue($this->columnExists($this->connection, 'messenger_stats', 'id'));
+        static::assertTrue($this->columnExists($this->connection, 'messenger_stats', 'message_type'));
+        static::assertTrue($this->columnExists($this->connection, 'messenger_stats', 'time_in_queue'));
+        static::assertTrue($this->columnExists($this->connection, 'messenger_stats', 'created_at'));
     }
 
     private function rollback(): void

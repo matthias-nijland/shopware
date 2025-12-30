@@ -30,7 +30,7 @@ ADD FOREIGN KEY (`fk.cart.payment_method_id`) REFERENCES `payment_method` (`id`)
         $m->update($connection);
         $m->update($connection);
 
-        $fks = $connection->createSchemaManager()->listTableForeignKeys('cart');
+        $fks = $connection->createSchemaManager()->introspectTableForeignKeyConstraintsByUnquotedName('cart');
         static::assertEmpty($fks);
     }
 

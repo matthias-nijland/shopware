@@ -3,7 +3,6 @@
 namespace Shopware\Tests\Migration\Core\V6_7;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint\ReferentialAction;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -11,6 +10,7 @@ use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Migration\V6_7\Migration1753799632FixStateMachineHistoryIntegrationConstraint;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineHistory\StateMachineHistoryDefinition;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -19,6 +19,8 @@ use Shopware\Core\System\StateMachine\Aggregation\StateMachineHistory\StateMachi
 #[CoversClass(Migration1753799632FixStateMachineHistoryIntegrationConstraint::class)]
 class Migration1753799632FixStateMachineHistoryIntegrationConstraintTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -39,10 +41,7 @@ class Migration1753799632FixStateMachineHistoryIntegrationConstraintTest extends
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $fks = $this->connection->createSchemaManager()->listTableForeignKeys(StateMachineHistoryDefinition::ENTITY_NAME);
-        $fk = current(array_filter($fks, fn (ForeignKeyConstraint $fk) => $fk->getName() === 'fk.state_machine_history.integration_id'));
-
-        static::assertInstanceOf(ForeignKeyConstraint::class, $fk);
-        static::assertSame(ReferentialAction::SET_NULL, $fk->getOnDeleteAction());
+        $foreignKey = $this->getForeignKeyOfTable($this->connection, StateMachineHistoryDefinition::ENTITY_NAME, 'fk.state_machine_history.integration_id');
+        static::assertSame(ReferentialAction::SET_NULL, $foreignKey->getOnDeleteAction());
     }
 }

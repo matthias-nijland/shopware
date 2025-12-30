@@ -3,7 +3,6 @@
 namespace Shopware\Tests\Migration\Core\V6_6;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
@@ -17,6 +16,7 @@ use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachine
 use Shopware\Core\System\StateMachine\Loader\InitialStateIdLoader;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\Test\TestDefaults;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -26,6 +26,7 @@ use Shopware\Core\Test\TestDefaults;
 class Migration1720094362AddStateForeignKeyToOrderDeliveryTest extends TestCase
 {
     use KernelTestBehaviour;
+    use MigrationTestTrait;
 
     private Connection $connection;
 
@@ -40,9 +41,11 @@ class Migration1720094362AddStateForeignKeyToOrderDeliveryTest extends TestCase
             $this->rollback();
 
             $initialState = static::getContainer()->get(InitialStateIdLoader::class)->get('order_delivery.state');
-            $otherState = static::getContainer()->get(StateMachineRegistry::class)->getStateMachine(OrderDeliveryStates::STATE_MACHINE, Context::createDefaultContext())->getStates()?->filter(function (StateMachineStateEntity $state) use ($initialState) {
-                return $state->getId() !== $initialState;
-            })->first()?->getId() ?? Uuid::randomHex();
+            $otherState = static::getContainer()->get(StateMachineRegistry::class)
+                ->getStateMachine(OrderDeliveryStates::STATE_MACHINE, Context::createDefaultContext())
+                ->getStates()?->filter(function (StateMachineStateEntity $state) use ($initialState) {
+                    return $state->getId() !== $initialState;
+                })->first()?->getId() ?? Uuid::randomHex();
             $invalidState = Uuid::randomHex();
 
             $this->createOrderDelivery($initialState);
@@ -142,9 +145,10 @@ class Migration1720094362AddStateForeignKeyToOrderDeliveryTest extends TestCase
 
     private function hasForeignKey(): bool
     {
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableForeignKeys('order_delivery');
+        $foreignKey = $this->getForeignKeyOfTable($this->connection, 'order_delivery', 'fk.order_delivery.state_id');
 
-        return (bool) \array_filter($columns, static fn (ForeignKeyConstraint $column) => $column->getReferencedTableName()->toString() === 'state_machine_state' && $column->getReferencingColumnNames()[0]->toString() === 'state_id' && $column->getReferencedColumnNames()[0]->toString() === 'id');
+        return $foreignKey->getReferencedTableName()->getUnqualifiedName()->getValue() === 'state_machine_state'
+            && $foreignKey->getReferencingColumnNames()[0]->getIdentifier()->getValue() === 'state_id'
+            && $foreignKey->getReferencedColumnNames()[0]->getIdentifier()->getValue() === 'id';
     }
 }

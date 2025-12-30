@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Migration\V6_7\Migration1752750171AddIndexToOrderAddressCreateAndUpdate;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -16,6 +17,8 @@ use Shopware\Core\Migration\V6_7\Migration1752750171AddIndexToOrderAddressCreate
 #[CoversClass(Migration1752750171AddIndexToOrderAddressCreateAndUpdate::class)]
 class Migration1752750171AddIndexToOrderAddressCreateAndUpdateTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -37,16 +40,12 @@ class Migration1752750171AddIndexToOrderAddressCreateAndUpdateTest extends TestC
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $existingIndexes = $this->connection->createSchemaManager()->listTableIndexes('order_address');
-
-        static::assertArrayHasKey('idx.order_address_created_updated', $existingIndexes);
+        static::assertTrue($this->indexExists($this->connection, 'order_address', 'idx.order_address_created_updated'));
     }
 
     private function rollback(): void
     {
-        $existingIndexes = $this->connection->createSchemaManager()->listTableIndexes('order_address');
-
-        if (isset($existingIndexes['idx.order_address_created_updated'])) {
+        if ($this->indexExists($this->connection, 'order_address', 'idx.order_address_created_updated')) {
             $this->connection->executeStatement('DROP INDEX `idx.order_address_created_updated` ON `order_address`');
         }
     }

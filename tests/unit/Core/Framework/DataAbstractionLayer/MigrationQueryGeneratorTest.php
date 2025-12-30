@@ -62,11 +62,11 @@ class MigrationQueryGeneratorTest extends TestCase
     {
         $entityDefinition = $this->createMock(EntityDefinition::class);
 
-        $this->schemaManager->method('tablesExist')->willReturn(true);
+        $this->schemaManager->expects($this->once())->method('tablesExist')->willReturn(true);
 
-        $this->schemaManager->method('introspectTable')->willReturn($this->getOriginalTable());
+        $this->schemaManager->expects($this->once())->method('introspectTableByUnquotedName')->willReturn($this->getOriginalTable());
 
-        $this->schemaBuilder->method('buildSchemaOfDefinition')->willReturn($this->getNewTable());
+        $this->schemaBuilder->expects($this->once())->method('buildSchemaOfDefinition')->willReturn($this->getNewTable());
 
         $queries = $this->generator->generateQueries($entityDefinition);
 
@@ -79,9 +79,9 @@ class MigrationQueryGeneratorTest extends TestCase
     {
         $entityDefinition = $this->createMock(EntityDefinition::class);
 
-        $this->schemaManager->method('tablesExist')->willReturn(false);
+        $this->schemaManager->expects($this->once())->method('tablesExist')->willReturn(false);
 
-        $this->schemaBuilder->method('buildSchemaOfDefinition')->willReturn($this->getNewTable());
+        $this->schemaBuilder->expects($this->once())->method('buildSchemaOfDefinition')->willReturn($this->getNewTable());
 
         $queries = $this->generator->generateQueries($entityDefinition);
 

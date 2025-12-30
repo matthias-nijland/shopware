@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Elasticsearch\Migration\V6_5\Migration1689084023AdminElasticsearchIndexTask;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -14,6 +15,8 @@ use Shopware\Elasticsearch\Migration\V6_5\Migration1689084023AdminElasticsearchI
 #[CoversClass(Migration1689084023AdminElasticsearchIndexTask::class)]
 class Migration1689084023AdminElasticsearchIndexTaskTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -29,15 +32,11 @@ class Migration1689084023AdminElasticsearchIndexTaskTest extends TestCase
         $migration = new Migration1689084023AdminElasticsearchIndexTask();
         $migration->update($this->connection);
 
-        $schemaManager = $this->connection->createSchemaManager();
-        $columns = $schemaManager->listTableColumns('admin_elasticsearch_index_task');
-
-        static::assertNotEmpty($columns);
-        static::assertArrayHasKey('id', $columns);
-        static::assertArrayHasKey('`index`', $columns);
-        static::assertArrayHasKey('alias', $columns);
-        static::assertArrayHasKey('entity', $columns);
-        static::assertArrayHasKey('doc_count', $columns);
+        static::assertTrue($this->columnExists($this->connection, 'admin_elasticsearch_index_task', 'id'));
+        static::assertTrue($this->columnExists($this->connection, 'admin_elasticsearch_index_task', 'index'));
+        static::assertTrue($this->columnExists($this->connection, 'admin_elasticsearch_index_task', 'alias'));
+        static::assertTrue($this->columnExists($this->connection, 'admin_elasticsearch_index_task', 'entity'));
+        static::assertTrue($this->columnExists($this->connection, 'admin_elasticsearch_index_task', 'doc_count'));
     }
 
     private function rollback(): void

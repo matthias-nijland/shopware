@@ -10,6 +10,7 @@ use Shopware\Core\Checkout\Shipping\ShippingMethodDefinition;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelTestBehaviour;
 use Shopware\Core\Migration\V6_7\Migration1697112044PaymentAndShippingTechnicalNameRequired;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -19,6 +20,7 @@ use Shopware\Core\Migration\V6_7\Migration1697112044PaymentAndShippingTechnicalN
 class Migration1697112044PaymentAndShippingTechnicalNameRequiredTest extends TestCase
 {
     use KernelTestBehaviour;
+    use MigrationTestTrait;
 
     private Connection $connection;
 
@@ -38,16 +40,11 @@ class Migration1697112044PaymentAndShippingTechnicalNameRequiredTest extends Tes
         $this->migrate();
         $this->migrate();
 
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableColumns(PaymentMethodDefinition::ENTITY_NAME);
+        $paymentMethodTechnicalNameColumn = $this->getColumnOfTable($this->connection, PaymentMethodDefinition::ENTITY_NAME, 'technical_name');
+        static::assertTrue($paymentMethodTechnicalNameColumn->getNotnull());
 
-        static::assertArrayHasKey('technical_name', $columns);
-        static::assertTrue($columns['technical_name']->getNotnull());
-
-        $columns = $manager->listTableColumns(ShippingMethodDefinition::ENTITY_NAME);
-
-        static::assertArrayHasKey('technical_name', $columns);
-        static::assertTrue($columns['technical_name']->getNotnull());
+        $shippingMethodTechnicalNameColumn = $this->getColumnOfTable($this->connection, ShippingMethodDefinition::ENTITY_NAME, 'technical_name');
+        static::assertTrue($shippingMethodTechnicalNameColumn->getNotnull());
     }
 
     private function migrate(): void

@@ -213,7 +213,7 @@ class SchemaUpdaterTest extends TestCase
             foreach ($columns as $column) {
                 static::assertFalse(
                     $table->hasColumn($column),
-                    \sprintf('Column %s found in table %s: %s', $column, $table->getName(), \print_r($table->getColumns(), true))
+                    \sprintf('Column %s found in table %s: %s', $column, $table->getObjectName()->toString(), \print_r($table->getColumns(), true))
                 );
             }
         }
@@ -339,7 +339,7 @@ class SchemaUpdaterTest extends TestCase
             // strtolower required for assertContains
             static::assertTrue(
                 $table->hasColumn($column),
-                \sprintf('Column %s not found in table %s: %s', $column, $table->getName(), \print_r($table->getColumns(), true))
+                \sprintf('Column %s not found in table %s: %s', $column, $table->getObjectName()->toString(), \print_r($table->getColumns(), true))
             );
         }
     }

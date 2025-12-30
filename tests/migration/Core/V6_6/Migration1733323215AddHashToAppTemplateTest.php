@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelTestBehaviour;
 use Shopware\Core\Migration\V6_6\Migration1733323215AddHashToAppTemplate;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -17,6 +18,7 @@ use Shopware\Core\Migration\V6_6\Migration1733323215AddHashToAppTemplate;
 class Migration1733323215AddHashToAppTemplateTest extends TestCase
 {
     use KernelTestBehaviour;
+    use MigrationTestTrait;
 
     private Connection $connection;
 
@@ -38,9 +40,6 @@ class Migration1733323215AddHashToAppTemplateTest extends TestCase
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableColumns('app_template');
-
-        static::assertArrayHasKey('hash', $columns);
+        static::assertTrue($this->columnExists($this->connection, 'app_template', 'hash'));
     }
 }

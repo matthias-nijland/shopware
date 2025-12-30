@@ -49,18 +49,13 @@ class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
         $this->migrate();
         $this->migrate();
 
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableColumns(OrderDefinition::ENTITY_NAME);
-
-        static::assertArrayHasKey('primary_order_transaction_id', $columns);
-        static::assertArrayHasKey('primary_order_transaction_version_id', $columns);
+        static::assertTrue($this->columnExists($this->connection, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_id'));
+        static::assertTrue($this->columnExists($this->connection, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_version_id'));
 
         $query = $this->connection->createQueryBuilder();
         $query->select('*');
         $query->from('`order`');
-        $result = $query->executeQuery()->fetchAllAssociative();
-
-        foreach ($result as $row) {
+        foreach ($query->executeQuery()->fetchAllAssociative() as $row) {
             static::assertNotNull($row['primary_order_transaction_id']);
             static::assertNotNull($row['primary_order_transaction_version_id']);
         }
@@ -74,18 +69,13 @@ class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
         $this->migrate();
         $this->migrate();
 
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableColumns(OrderDefinition::ENTITY_NAME);
-
-        static::assertArrayHasKey('primary_order_transaction_id', $columns);
-        static::assertArrayHasKey('primary_order_transaction_version_id', $columns);
+        static::assertTrue($this->columnExists($this->connection, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_id'));
+        static::assertTrue($this->columnExists($this->connection, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_version_id'));
 
         $query = $this->connection->createQueryBuilder();
         $query->select('*');
         $query->from('`order`');
-        $result = $query->executeQuery()->fetchAllAssociative();
-
-        foreach ($result as $row) {
+        foreach ($query->executeQuery()->fetchAllAssociative() as $row) {
             static::assertNull($row['primary_order_transaction_id']);
             static::assertNull($row['primary_order_transaction_version_id']);
         }
@@ -114,7 +104,7 @@ class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
                     'taxStatus' => 'gross',
                     'totalPrice' => 100,
                     'positionPrice' => 1,
-                ]),
+                ], \JSON_THROW_ON_ERROR),
                 'currency_id' => Uuid::fromHexToBytes(Defaults::CURRENCY),
                 'state_id' => $stateId,
                 'language_id' => Uuid::fromHexToBytes(Defaults::LANGUAGE_SYSTEM),

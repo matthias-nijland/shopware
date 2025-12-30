@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Migration\V6_6\Migration1733745893createTagStorageTable;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -16,6 +17,8 @@ use Shopware\Core\Migration\V6_6\Migration1733745893createTagStorageTable;
 #[CoversClass(Migration1733745893createTagStorageTable::class)]
 class Migration1733745893createTagStorageTableTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -33,20 +36,16 @@ class Migration1733745893createTagStorageTableTest extends TestCase
 
     public function testTableIsCreated(): void
     {
-        $sm = $this->connection->createSchemaManager();
-
-        static::assertFalse($sm->tablesExist(['invalidation_tags']));
+        static::assertFalse($this->getSchemaManager($this->connection)->tableExists('invalidation_tags'));
 
         $migration = new Migration1733745893createTagStorageTable();
 
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        static::assertTrue($sm->tablesExist(['invalidation_tags']));
+        static::assertTrue($this->getSchemaManager($this->connection)->tableExists('invalidation_tags'));
 
-        $cols = $sm->listTableColumns('invalidation_tags');
-        static::assertCount(2, $cols);
-        static::assertSame('tag', $cols['tag']->getName());
-        static::assertSame('id', $cols['id']->getName());
+        static::assertTrue($this->columnExists($this->connection, 'invalidation_tags', 'tag'));
+        static::assertTrue($this->columnExists($this->connection, 'invalidation_tags', 'id'));
     }
 }

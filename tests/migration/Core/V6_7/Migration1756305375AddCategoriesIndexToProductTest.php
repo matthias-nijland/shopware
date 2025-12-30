@@ -7,6 +7,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
 use Shopware\Core\Migration\V6_7\Migration1756305375AddCategoriesIndexToProduct;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -14,6 +15,8 @@ use Shopware\Core\Migration\V6_7\Migration1756305375AddCategoriesIndexToProduct;
 #[CoversClass(Migration1756305375AddCategoriesIndexToProduct::class)]
 class Migration1756305375AddCategoriesIndexToProductTest extends TestCase
 {
+    use MigrationTestTrait;
+
     private Connection $connection;
 
     protected function setUp(): void
@@ -25,19 +28,14 @@ class Migration1756305375AddCategoriesIndexToProductTest extends TestCase
 
     public function testIndexIsCreated(): void
     {
-        $schemaManager = $this->connection->createSchemaManager();
-        $table = $schemaManager->introspectTable('product');
-
-        if ($table->hasIndex('idx.product.categories')) {
+        if ($this->indexExists($this->connection, 'product', 'idx.product.categories')) {
             $this->connection->executeStatement('DROP INDEX `idx.product.categories` ON `product`');
         }
 
         $migration = new Migration1756305375AddCategoriesIndexToProduct();
         $migration->update($this->connection);
 
-        $table = $this->connection->createSchemaManager()->introspectTable('product');
-
-        static::assertTrue($table->hasIndex('idx.product.categories'));
+        static::assertTrue($this->indexExists($this->connection, 'product', 'idx.product.categories'));
     }
 
     public function testMigrationIsIdempotent(): void
@@ -46,8 +44,6 @@ class Migration1756305375AddCategoriesIndexToProductTest extends TestCase
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $table = $this->connection->createSchemaManager()->introspectTable('product');
-
-        static::assertTrue($table->hasIndex('idx.product.categories'));
+        static::assertTrue($this->indexExists($this->connection, 'product', 'idx.product.categories'));
     }
 }

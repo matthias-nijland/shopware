@@ -137,7 +137,7 @@ class CustomEntityTest extends TestCase
 
         static::getContainer()->get(Connection::class)->beginTransaction();
 
-        $this->testStorage($container);
+        $this->testStorage();
 
         $this->testCreateFromXml();
 
@@ -345,12 +345,9 @@ class CustomEntityTest extends TestCase
         $this->cleanupAppData(static::getContainer());
     }
 
-    private function testStorage(ContainerInterface $container): void
+    private function testStorage(): void
     {
-        $schema = $container
-            ->get(Connection::class)
-            ->createSchemaManager()
-            ->introspectSchema();
+        $schema = $this->getSchema();
 
         self::assertColumns($schema, 'custom_entity_blog', ['id', 'top_seller_restrict_id', 'top_seller_restrict_version_id', 'top_seller_cascade_id', 'top_seller_cascade_version_id', 'top_seller_set_null_id', 'top_seller_set_null_version_id', 'link_product_restrict_id', 'link_product_restrict_version_id', 'link_product_cascade_id', 'link_product_cascade_version_id', 'link_product_set_null_id', 'link_product_set_null_version_id', 'inherited_top_seller_id', 'inherited_top_seller_version_id', 'created_at', 'updated_at', 'position', 'rating', 'payload', 'email']);
         self::assertColumns($schema, 'custom_entity_blog_translation', ['custom_entity_blog_id', 'language_id', 'created_at', 'updated_at', 'title', 'content', 'display']);
@@ -677,7 +674,7 @@ class CustomEntityTest extends TestCase
         $table = $schema->getTable($table);
 
         foreach ($columns as $column) {
-            static::assertTrue($table->hasColumn($column), 'Column ' . $column . ' not found in table ' . $table->getName());
+            static::assertTrue($table->hasColumn($column), 'Column ' . $column . ' not found in table ' . $table->getObjectName()->toString());
         }
     }
 

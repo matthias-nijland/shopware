@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelTestBehaviour;
 use Shopware\Core\Migration\V6_6\Migration1718658881AddValidationDataToOrderTransaction;
+use Shopware\Tests\Migration\MigrationTestTrait;
 
 /**
  * @internal
@@ -17,6 +18,7 @@ use Shopware\Core\Migration\V6_6\Migration1718658881AddValidationDataToOrderTran
 class Migration1718658881AddValidationDataToOrderTransactionTest extends TestCase
 {
     use KernelTestBehaviour;
+    use MigrationTestTrait;
 
     private Connection $connection;
 
@@ -31,11 +33,8 @@ class Migration1718658881AddValidationDataToOrderTransactionTest extends TestCas
         $this->migrate();
         $this->migrate();
 
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableColumns('order_transaction');
-
-        static::assertArrayHasKey('validation_data', $columns);
-        static::assertFalse($columns['validation_data']->getNotnull());
+        $column = $this->getColumnOfTable($this->connection, 'order_transaction', 'validation_data');
+        static::assertFalse($column->getNotnull());
     }
 
     private function migrate(): void
