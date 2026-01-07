@@ -1,0 +1,20 @@
+{% block sw_cms_element_video %}
+<div
+    class="sw-cms-el-video"
+    :style="horizontalAlign"
+>
+    <div
+        class="sw-cms-el-video__content"
+        :class="displayModeClass"
+        :style="styles"
+    >
+        {% block sw_cms_element_video_content %}
+        <video
+            :src="mediaUrl"
+            :style="videoStyles"
+            alt=""
+        />
+        {% endblock %}
+    </div>
+</div>
+{% endblock %}

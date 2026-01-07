@@ -1,24 +1,26 @@
-{% block element_image %}
+{% block element_video %}
     {% set config = element.fieldConfig.elements %}
     {% set isCover = element.translated.config.displayMode.value == 'cover' %}
-    <h1>Image</h1>
+    <h1>Video!</h1>
+
     {{ dump(config) }}
     {{ dump(element.data.media) }}
 
-    <div class="cms-element-{{ element.type }}{% if config.verticalAlign.value and not isCover %} d-flex has-vertical-alignment{% endif %}{% if config.horizontalAlign.value == "center" and not isCover %} justify-content-center{% elseif config.horizontalAlign.value == "flex-end" and not isCover %} justify-content-end{% else %} justify-content-start{% endif %}">
+    <div class="cms-element-video{% if config.verticalAlign.value and not isCover %} d-flex has-vertical-alignment{% endif %}{% if config.horizontalAlign.value == "center" and not isCover %} justify-content-center{% elseif config.horizontalAlign.value == "flex-end" and not isCover %} justify-content-end{% else %} justify-content-start{% endif %}">
         {% block element_product_slider_alignment %}
             {% if config.verticalAlign.value and not isCover %}
                 <div class="cms-element-alignment{% if config.verticalAlign.value == "center" %} align-self-center{% elseif config.verticalAlign.value == "flex-end" %} align-self-end{% else %} align-self-start{% endif %}">
             {% endif %}
-            {% block element_image_inner %}
-                {% set imageElement %}
-                    {% block element_image_container %}
+
+            {% block element_video_inner %}
+                {% set videoElement %}
+                    {% block element_video_container %}
                         {% if element.data.media.url %}
-                            <div class="w-100 cms-image-container is-{{ element.translated.config.displayMode.value }}"
+                            <div class="w-100 cms-video-container is-{{ element.translated.config.displayMode.value }}"
                                 {% if element.translated.config.minHeight.value and isCover %} style="min-height: {{ element.translated.config.minHeight.value }};"{% endif %}>
-                                {% block element_image_media %}
+                                {% block element_video_media %}
                                     {% set attributes = {
-                                        'class': 'cms-image',
+                                        'class': 'cms-video',
                                         'alt': element.translated.config.isDecorative.value ? '' : (element.data.media.translated.alt ?: ''),
                                         'title': element.translated.config.isDecorative.value ? '' : (element.data.media.translated.title ?: ''),
                                     } %}
@@ -33,9 +35,11 @@
                                         {% set attributes = attributes|merge({ 'loading': 'lazy' }) %}
                                     {% endif %}
 
-                                    {% sw_thumbnails 'cms-image-thumbnails' with {
-                                        media: element.data.media
-                                    } %}
+                                    <video src="{{ element.data.media.url }}" controls></video>
+
+{#                                    {% sw_thumbnails 'cms-image-thumbnails' with {#}
+{#                                        media: element.data.media#}
+{#                                    } %}#}
                                 {% endblock %}
                             </div>
                         {% endif %}
@@ -43,14 +47,16 @@
                 {% endset %}
 
                 {% if element.translated.config.url.value %}
-                    <a href="{{ element.translated.config.url.value }}"
-                       class="cms-image-link"
-                       {% if element.translated.config.ariaLabel.value %}aria-label="{{ element.translated.config.ariaLabel.value }}"{% endif %}
-                       {% if element.translated.config.newTab.value %}target="_blank" rel="noopener"{% endif %}>
-                        {{ imageElement }}
+                    <a
+                        href="{{ element.translated.config.url.value }}"
+                        class="cms-video-link"
+                        {% if element.translated.config.ariaLabel.value %}aria-label="{{ element.translated.config.ariaLabel.value }}"{% endif %}
+                        {% if element.translated.config.newTab.value %}target="_blank" rel="noopener"{% endif %}
+                    >
+                        {{ videoElement }}
                     </a>
                 {% else %}
-                    {{ imageElement }}
+                    {{ videoElement }}
                 {% endif %}
             {% endblock %}
             {% if config.verticalAlign.value and not isCover %}

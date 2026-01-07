@@ -2,6 +2,10 @@ import { defineComponent } from 'vue';
 import { type RuntimeSlot } from '../service/cms.service';
 import './sw-cms-state.mixin';
 
+export type CmsElementMixinInstance = {
+    element: RuntimeSlot;
+};
+
 const { Mixin } = Shopware;
 const { types } = Shopware.Utils;
 const { cloneDeep, merge, get, set, has } = Shopware.Utils.object;
@@ -47,6 +51,7 @@ export default Mixin.register(
                 return this.cmsService.getCmsElementRegistry();
             },
         },
+
         methods: {
             initElementConfig() {
                 this.initBaseConfig();
