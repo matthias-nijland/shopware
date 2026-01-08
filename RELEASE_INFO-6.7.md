@@ -32,9 +32,61 @@ Trying to update these columns now results in a `WriteConstraintViolationExcepti
 The `product.states` field is deprecated and will be removed in the next major release.
 A new field `product.type` was introduced to clearly indicate whether a product is `digital` or `physical`, or other types registered by third-party developers.
 
+As part of this change, the following deprecations were made:
+- The `order_line_item.states` field is deprecated in favor of `order_line_item.payload.product_type`.
+- `\Shopware\Core\Checkout\Cart\LineItem\LineItem::$states` is deprecated in favor of `\Shopware\Core\Checkout\Cart\LineItem\LineItem::$payload['productType']`.
+- The `LineItemProductStatesRule` is deprecated in favor of the new `LineItemProductTypeRule`.
+- The `StatesUpdater` service and its related dispatched events (`ProductStatesBeforeChangeEvent`, `ProductStatesChangedEvent`) are deprecated.
+- A new parameter `shopware.product.allowed_types` was introduced to allow third-party developers to register additional product types.
+- For more details, please refer to the [2025-11-14-introduce-product-type-and-deprecate-states.md](adr%2F2025-11-14-introduce-product-type-and-deprecate-states.md)
+
+If you are using the rule `LineItemProductStatesRule`, product stream filters, or product listing filters that rely on `product.states`, you should update them to use the new `product.type` field instead.
+If you create digital products using admin api, you should explicitly set the `type` field to `digital` when creating new products instead of relying on backend handling.
+
 ## Administration
 
+### Deprecations in mail template components
+
+The mail template index will be split into separate tabs for templates and headers/footers in v6.8.0.0.
+
+The following deprecations apply to `sw-mail-template-list` and `sw-mail-header-footer-list`:
+* `searchTerm` prop and watcher will be removed in v6.8.0.0
+* `getList()` method: `searchTerm` variable will be replaced with `this.term` in v6.8.0.0
+* `@page-change` handler will change to `onPageChange` in v6.8.0.0
+
+The following deprecations apply to `sw-mail-template-index`:
+* The `listing` mixin will be removed in v6.8.0.0
+* `term` data property will be removed in v6.8.0.0
+* `onChangeLanguage` method: the if/else block will be replaced with just the if-branch logic in v6.8.0.0
+
 ## Storefront
+
+### Improved cookie consent dialog UI and accessibility
+
+The cookie consent dialog now uses toggle switches instead of checkboxes for a more modern look. The button layout has been improved with a clearer visual hierarchy, placing the primary action on the right side. Additionally, accessibility improvements were made by adding proper ARIA attributes (`role="switch"`, `aria-disabled`, `aria-labelledby`) and converting links to semantic buttons where appropriate.
+
+### Google Analytics 4 Integration Update
+
+The Google Analytics integration has been updated to align with `GA4` standards, enhancing e-commerce tracking capabilities.
+
+- The event parameters for `add_to_cart`, `begin_checkout`, `purchase`, `view_item`, and `remove_from_cart` have been enriched with additional data such as `currency`, `value`, `item_brand`, and a hierarchical `item_category` structure.
+- Furthermore, new events for `add_to_wishlist`, `remove_from_wishlist`, `view_cart`, `add_shipping_info`, and `add_payment_info` have been implemented to provide a more comprehensive view of user interactions.
+- The checkout funnel now tracks shipping and payment method selections, including when users change their selections.
+- The `view_item_list` and `add_to_cart` events now fire when users navigate through product listings via pagination or apply filters, not just on initial page load.
+
+#### New Configuration: Track Offcanvas Cart
+
+A new configuration option `Track offcanvas cart` has been added to the Sales Channel Analytics settings. When enabled, the `view_cart` GA4 event will fire whenever the offcanvas cart is opened or its content is updated (e.g., quantity changes, product removals, promotions).
+
+#### New Configuration: Open Offcanvas Cart After Add to Cart
+
+A new configuration option `Open offcanvas cart after adding a product` has been added to the Cart settings (Settings → Shop → Cart). This setting is enabled by default. When disabled:
+
+1. The offcanvas cart will **not open automatically** after adding items to the cart
+2. A success message will be shown instead
+3. The cart widget in the header will still update to show the new item count
+
+**Recommended for accurate funnel tracking:** Disable "Open offcanvas cart after adding a product" and enable "Track offcanvas cart". This ensures `view_cart` events only fire when users intentionally click the cart button, providing accurate funnel metrics.
 
 ## App System
 
@@ -130,22 +182,6 @@ The following classes and constants were deprecated as they will not be used any
 Additionally, the following configuration was deprecated:
 * `shopware.cache.invalidation.http_cache`
 
-### Deprecation of product states in favor of the new product type
-
-The `product.states` field is deprecated and will be removed in the next major release.
-A new field `product.type` was introduced to clearly indicate whether a product is `digital` or `physical`, or other types registered by third-party developers.
-
-As part of this change, the following deprecations were made:
-- The `order_line_item.states` field is deprecated in favor of `order_line_item.payload.product_type`.
-- `\Shopware\Core\Checkout\Cart\LineItem\LineItem::$states` is deprecated in favor of `\Shopware\Core\Checkout\Cart\LineItem\LineItem::$payload['productType']`.
-- The `LineItemProductStatesRule` is deprecated in favor of the new `LineItemProductTypeRule`.
-- The `StatesUpdater` service and its related dispatched events (`ProductStatesBeforeChangeEvent`, `ProductStatesChangedEvent`) are deprecated.
-- A new parameter `shopware.product.allowed_types` was introduced to allow third-party developers to register additional product types.
-- For more details, please refer to the [2025-11-14-introduce-product-type-and-deprecate-states.md](adr%2F2025-11-14-introduce-product-type-and-deprecate-states.md)
-
-If you are using the rule `LineItemProductStatesRule`, product stream filters, or product listing filters that rely on `product.states`, you should update them to use the new `product.type` field instead.
-If you create digital products using admin api, you should explicitly set the `type` field to `digital` when creating new products instead of relying on backend handling.
-
 ### HTTP Caching Policies
 
 Added support for caching policies to define HTTP cache behavior via configuration.
@@ -179,19 +215,6 @@ When a mismatch is detected, the command provides a clear error message indicati
 
 ## Administration
 
-As part of this change, the following deprecations were made:
-- The `order_line_item.states` field is deprecated in favor of `order_line_item.payload.product_type`.
-- `\Shopware\Core\Checkout\Cart\LineItem\LineItem::$states` is deprecated in favor of `\Shopware\Core\Checkout\Cart\LineItem\LineItem::$payload['productType']`.
-- The `LineItemProductStatesRule` is deprecated in favor of the new `LineItemProductTypeRule`.
-- The `StatesUpdater` service and its related dispatched events (`ProductStatesBeforeChangeEvent`, `ProductStatesChangedEvent`) are deprecated.
-- A new parameter `shopware.product.allowed_types` was introduced to allow third-party developers to register additional product types.
-- For more details, please refer to the [2025-11-14-introduce-product-type-and-deprecate-states.md](adr%2F2025-11-14-introduce-product-type-and-deprecate-states.md)
-
-If you have using the rule `LineItemProductStatesRule`, product stream filters, or product listing filters that rely on `product.states`, you should update them to use the new `product.type` field instead.
-If you create digital products using admin api, you should explicitly set the `type` field to `digital` when creating new products instead of relying on backend handling.
-
-## Administration
-
 ### Loading indicator for whole page
 
 When the initial page takes more than two seconds to load, a loading indicator appears instead of a blank page.
@@ -205,10 +228,6 @@ In the settings module, there is now a search bar in the top right. It can be us
 ### The email validation supports IDN email addresses
 
 The domain part of email addresses may now contain internationalized domain names (IDN). The Storefront validation will properly check these domains. The form validation in PHP may still deny IDN emails addresses, but the default Shopware forms already allow them.
-
-### Improved cookie consent dialog UI and accessibility
-
-The cookie consent dialog now uses toggle switches instead of checkboxes for a more modern look. The button layout has been improved with a clearer visual hierarchy, placing the primary action on the right side. Additionally, accessibility improvements were made by adding proper ARIA attributes (`role="switch"`, `aria-disabled`, `aria-labelledby`) and converting links to semantic buttons where appropriate.
 
 ## App System
 
@@ -429,20 +448,6 @@ These blocks will be removed in v6.8.0.0 without replacement. Use the parent blo
 We also deprecate
 `administration/src/module/sw-newsletter-recipient/component/sw-newsletter-recipient-filter-switch` which will be removed with v6.8.0.0 and
 `administration/src/module/sw-newsletter-recipient/page/sw-newsletter-recipient-list/index.js` which will be private in v6.8.0.0.
-
-### Deprecations in mail template components
-
-The mail template index will be split into separate tabs for templates and headers/footers in v6.8.0.0.
-
-The following deprecations apply to `sw-mail-template-list` and `sw-mail-header-footer-list`:
-* `searchTerm` prop and watcher will be removed in v6.8.0.0
-* `getList()` method: `searchTerm` variable will be replaced with `this.term` in v6.8.0.0
-* `@page-change` handler will change to `onPageChange` in v6.8.0.0
-
-The following deprecations apply to `sw-mail-template-index`:
-* The `listing` mixin will be removed in v6.8.0.0
-* `term` data property will be removed in v6.8.0.0
-* `onChangeLanguage` method: the if/else block will be replaced with just the if-branch logic in v6.8.0.0
 
 ## Storefront
 
