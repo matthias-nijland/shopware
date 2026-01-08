@@ -76,8 +76,6 @@ class CacheInvalidator
             return $tags;
         }
 
-        $this->logger->info(\sprintf('Purged %d tags', \count($tags)));
-
         $this->purge($tags);
 
         return $tags;
@@ -106,6 +104,7 @@ class CacheInvalidator
             $this->httpCacheStore->setMultiple($list);
         }
 
+        $this->logger->info(\sprintf('Purged %d tags.', \count($keys)), ['tags' => $keys]);
         $this->dispatcher->dispatch(new InvalidateCacheEvent($keys));
     }
 

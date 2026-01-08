@@ -43,6 +43,10 @@ As part of this change, the following deprecations were made:
 If you are using the rule `LineItemProductStatesRule`, product stream filters, or product listing filters that rely on `product.states`, you should update them to use the new `product.type` field instead.
 If you create digital products using admin api, you should explicitly set the `type` field to `digital` when creating new products instead of relying on backend handling.
 
+### Logging for invalidated cache tags
+
+Added info-level logging for invalidated cache tags to improve cache transparency and debugging.
+
 ## Administration
 
 ### Deprecations in mail template components
