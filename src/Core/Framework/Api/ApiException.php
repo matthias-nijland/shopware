@@ -69,7 +69,7 @@ class ApiException extends HttpException
     public const API_DIRECTORY_NOT_CREATED = 'FRAMEWORK__API_DIRECTORY_NOT_CREATED';
 
     /**
-     * @param array<array{pointer: string, entity: string}> $exceptions
+     * @param list<array{pointer: string, entity: string}> $exceptions
      */
     public static function canNotResolveForeignKeysException(array $exceptions): self
     {
@@ -158,7 +158,7 @@ class ApiException extends HttpException
         return new self(
             Response::HTTP_BAD_REQUEST,
             self::API_INVALID_ASSOCIATION_FIELD,
-            'Field "%s" is not a valid association field.',
+            'Field "{{ path }}" is not a valid association field.',
             ['path' => $path]
         );
     }
