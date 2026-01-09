@@ -1,6 +1,6 @@
 shopware:
     analytics:
-        gateway_url: 'https://product-analytics.staging.shopware.io'
+        gateway_url: 'https://product-analytics-gateway.staging-services.shopware.io'
 
     api:
         api_browser:

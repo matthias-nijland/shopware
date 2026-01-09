@@ -227,9 +227,7 @@ class Configuration implements ConfigurationInterface
         $rootNode = (new TreeBuilder('analytics'))->getRootNode();
         $rootNode
             ->children()
-                ->scalarNode('gateway_url')
-                    ->defaultValue('https://product-analytics.shopware.io')
-                ->end()
+                ->scalarNode('gateway_url')->end()
             ->end();
 
         return $rootNode;
