@@ -5,6 +5,7 @@ namespace Shopware\Core\Migration\V6_4;
 use Doctrine\DBAL\Connection;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Migration\MigrationStep;
+use Shopware\Core\Framework\Util\DbTableHelper;
 
 /**
  * @internal
@@ -19,7 +20,8 @@ class Migration1667806582AddCreatedByIdAndUpdatedByIdToCustomer extends Migratio
 
     public function update(Connection $connection): void
     {
-        if ($this->columnExists($connection, 'customer', 'created_by_id') || $this->columnExists($connection, 'customer', 'updated_by_id')) {
+        $schemaManager = $connection->createSchemaManager();
+        if (DbTableHelper::columnExists($schemaManager, 'customer', 'created_by_id') || DbTableHelper::columnExists($schemaManager, 'customer', 'updated_by_id')) {
             return;
         }
 

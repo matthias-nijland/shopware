@@ -3,11 +3,12 @@
 namespace Shopware\Tests\Migration\Core\V6_8;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\Table;
+use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Migration\IndexerQueuer;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Migration\V6_8\Migration1763125892RemoveProductStatesColumn;
 
 /**
@@ -38,31 +39,24 @@ class Migration1763125892RemoveProductStatesColumnTest extends TestCase
 
     public function testUpdateDestructiveDropsStatesColumn(): void
     {
-        $this->addStatesColumn();
+        $schemaManager = $this->connection->createSchemaManager();
+        static::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->addStatesColumn($schemaManager);
 
         $migration = new Migration1763125892RemoveProductStatesColumn();
         $migration->updateDestructive($this->connection);
         $migration->updateDestructive($this->connection);
 
-        $table = $this->getProductTable();
-
-        static::assertFalse($table->hasColumn('states'));
+        static::assertFalse(DbTableHelper::columnExists($schemaManager, 'product', 'states'));
     }
 
-    private function addStatesColumn(): void
+    private function addStatesColumn(MySQLSchemaManager $schemaManager): void
     {
-        $table = $this->getProductTable();
-
-        if ($table->hasColumn('states')) {
+        if (DbTableHelper::columnExists($schemaManager, 'product', 'states')) {
             return;
         }
 
         $this->connection->executeStatement('ALTER TABLE `product` ADD COLUMN `states` JSON NULL');
         $this->connection->executeStatement('ALTER TABLE `product` ADD CONSTRAINT `json.product.states` CHECK (JSON_VALID(`states`))');
-    }
-
-    private function getProductTable(): Table
-    {
-        return $this->connection->createSchemaManager()->introspectTable('product');
     }
 }

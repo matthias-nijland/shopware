@@ -23,7 +23,7 @@ class Migration1707064042CartRemoveFKTest extends TestCase
 ALTER TABLE `cart`
 ADD FOREIGN KEY (`fk.cart.payment_method_id`) REFERENCES `payment_method` (`id`) ON DELETE CASCADE ON UPDATE CASCADE'
             );
-        } catch (\Exception $e) {
+        } catch (\Exception) {
         }
 
         $m = new Migration1707064042CartRemoveFK();
@@ -34,7 +34,7 @@ ADD FOREIGN KEY (`fk.cart.payment_method_id`) REFERENCES `payment_method` (`id`)
         static::assertEmpty($fks);
     }
 
-    public function testDescructive(): void
+    public function testDestructive(): void
     {
         $connection = KernelLifecycleManager::getConnection();
 

@@ -45,8 +45,4 @@ class Migration1536761533TestMigration extends MigrationStep
             [$id, self::TEST_SYSTEM_CONFIG_KEY, $value + 1]
         );
     }
-
-    public function updateDestructive(Connection $connection): void
-    {
-    }
 }

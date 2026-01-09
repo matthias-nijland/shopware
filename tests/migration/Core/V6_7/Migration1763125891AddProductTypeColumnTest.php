@@ -3,10 +3,11 @@
 namespace Shopware\Tests\Migration\Core\V6_7;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\Table;
+use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Migration\V6_7\Migration1763125891AddProductTypeColumn;
 
 /**
@@ -26,46 +27,37 @@ class Migration1763125891AddProductTypeColumnTest extends TestCase
 
     public function testUpdateAddsTypeColumnAndIndex(): void
     {
-        $this->ensureStatesColumnExists();
-        $this->dropTypeColumnIfExists();
+        $schemaManager = $this->connection->createSchemaManager();
+        static::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->ensureStatesColumnExists($schemaManager);
+        $this->dropTypeColumnIfExists($schemaManager);
 
         $migration = new Migration1763125891AddProductTypeColumn();
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $table = $this->getProductTable();
-
-        static::assertTrue($table->hasColumn('type'));
-        static::assertSame('physical', $table->getColumn('type')->getDefault());
-        static::assertTrue($table->hasIndex('idx.product.type'));
+        $typeColumn = DbTableHelper::getColumnOfTable($schemaManager, 'product', 'type');
+        static::assertSame('physical', $typeColumn->getDefault());
+        static::assertTrue(DbTableHelper::indexExists($schemaManager, 'product', 'idx.product.type'));
     }
 
-    private function dropTypeColumnIfExists(): void
+    private function dropTypeColumnIfExists(MySQLSchemaManager $schemaManager): void
     {
-        $table = $this->getProductTable();
-
-        if ($table->hasIndex('idx.product.type')) {
+        if (DbTableHelper::indexExists($schemaManager, 'product', 'idx.product.type')) {
             $this->connection->executeStatement('DROP INDEX `idx.product.type` ON `product`');
         }
 
-        if ($table->hasColumn('type')) {
+        if (DbTableHelper::columnExists($schemaManager, 'product', 'type')) {
             $this->connection->executeStatement('ALTER TABLE `product` DROP COLUMN `type`');
         }
     }
 
-    private function ensureStatesColumnExists(): void
+    private function ensureStatesColumnExists(MySQLSchemaManager $schemaManager): void
     {
-        $table = $this->getProductTable();
-
-        if ($table->hasColumn('states')) {
+        if (DbTableHelper::columnExists($schemaManager, 'product', 'states')) {
             return;
         }
 
         $this->connection->executeStatement('ALTER TABLE `product` ADD COLUMN `states` JSON NULL');
-    }
-
-    private function getProductTable(): Table
-    {
-        return $this->connection->createSchemaManager()->introspectTable('product');
     }
 }

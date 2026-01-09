@@ -11,7 +11,6 @@ use Shopware\Core\Framework\App\AppEntity;
 use Shopware\Core\Framework\App\Lifecycle\AppLifecycle;
 use Shopware\Core\Framework\App\Manifest\Manifest;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\Dbal\EntityDefinitionQueryHelper;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Plugin\PluginEntity;
@@ -288,7 +287,7 @@ class CmsAwareAndAdminUiTest extends TestCase
 
     private function dbHasTable(string $tableName): bool
     {
-        return EntityDefinitionQueryHelper::tableExists($this->connection, $tableName);
+        return DbTableHelper::tableExists($this->connection->createSchemaManager(), $tableName);
     }
 
     /**

@@ -192,6 +192,9 @@ class ExampleStep extends MigrationStep
         return $this->dropColumnIfExists($connection, $table, $column);
     }
 
+    /**
+     * @param non-empty-string $table
+     */
     public function doAddColumn(Connection $connection, string $table, string $column, string $type): bool
     {
         return $this->addColumn($connection, $table, $column, $type);

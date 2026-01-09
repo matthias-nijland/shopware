@@ -3,10 +3,11 @@
 namespace Shopware\Tests\Migration\Core\V6_8;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\Table;
+use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Migration\V6_8\Migration1763125903RemoveOrderLineItemStatesColumn;
 
 /**
@@ -26,29 +27,24 @@ class Migration1763125903RemoveOrderLineItemStatesColumnTest extends TestCase
 
     public function testUpdateDestructiveRemovesStatesColumn(): void
     {
-        $this->ensureStatesColumnExists();
+        $schemaManager = $this->connection->createSchemaManager();
+        static::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->ensureStatesColumnExists($schemaManager);
 
         $migration = new Migration1763125903RemoveOrderLineItemStatesColumn();
         $migration->updateDestructive($this->connection);
         $migration->updateDestructive($this->connection);
 
-        static::assertFalse($this->getOrderLineItemTable()->hasColumn('states'));
+        static::assertFalse(DbTableHelper::columnExists($schemaManager, 'order_line_item', 'states'));
     }
 
-    private function ensureStatesColumnExists(): void
+    private function ensureStatesColumnExists(MySQLSchemaManager $schemaManager): void
     {
-        $table = $this->getOrderLineItemTable();
-
-        if ($table->hasColumn('states')) {
+        if (DbTableHelper::columnExists($schemaManager, 'order_line_item', 'states')) {
             return;
         }
 
         $this->connection->executeStatement('ALTER TABLE `order_line_item` ADD COLUMN `states` JSON NULL');
         $this->connection->executeStatement('ALTER TABLE `order_line_item` ADD CONSTRAINT `json.order_line_item.states` CHECK (JSON_VALID(`states`))');
-    }
-
-    private function getOrderLineItemTable(): Table
-    {
-        return $this->connection->createSchemaManager()->introspectTable('order_line_item');
     }
 }

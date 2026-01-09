@@ -4,9 +4,11 @@ namespace Shopware\Core\Framework\DataAbstractionLayer;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
+use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Doctrine\DBAL\Schema\Table;
 use Shopware\Core\Framework\DataAbstractionLayer\Dbal\SchemaBuilder;
 use Shopware\Core\Framework\Log\Package;
+use Shopware\Core\Framework\Util\DbTableHelper;
 
 /**
  * @internal
@@ -14,34 +16,38 @@ use Shopware\Core\Framework\Log\Package;
 #[Package('framework')]
 class MigrationQueryGenerator
 {
-    public function __construct(private readonly Connection $connection, private readonly SchemaBuilder $schemaBuilder)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly SchemaBuilder $schemaBuilder
+    ) {
     }
 
     /**
      * Generates the SQL queries for the given entity definition based on the current database schema.
-     * If the definition was updated it will generate the queries to update the schema.
-     * If the definition was created it will generate the queries to create the schema.
+     * If the definition was updated, it will generate the queries to update the schema.
+     * If the definition was created, it will generate the queries to create the schema.
      *
-     * @return string[]
+     * @return list<string>
      */
     public function generateQueries(EntityDefinition $entityDefinition): array
     {
-        $tableExists = $this->connection->createSchemaManager()->tablesExist([$entityDefinition->getEntityName()]);
+        $schemaManager = $this->connection->createSchemaManager();
+        $tableExists = DbTableHelper::tableExists($schemaManager, $entityDefinition->getEntityName());
 
         if ($tableExists) {
-            return $this->getAlterTableQueries($entityDefinition);
+            return $this->getAlterTableQueries($entityDefinition, $schemaManager);
         }
 
         return $this->getCreateTableQueries($entityDefinition);
     }
 
     /**
-     * @return string[]
+     * @param AbstractSchemaManager<AbstractPlatform> $schemaManager
+     *
+     * @return list<string>
      */
-    private function getAlterTableQueries(EntityDefinition $definition): array
+    private function getAlterTableQueries(EntityDefinition $definition, AbstractSchemaManager $schemaManager): array
     {
-        $schemaManager = $this->connection->createSchemaManager();
         $originalTableSchema = $schemaManager->introspectTable($definition->getEntityName());
 
         // Indexes are not supported, so we remove them from both tables
@@ -55,7 +61,7 @@ class MigrationQueryGenerator
     }
 
     /**
-     * @return string[]
+     * @return list<string>
      */
     private function getCreateTableQueries(EntityDefinition $definition): array
     {

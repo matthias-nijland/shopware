@@ -3,9 +3,11 @@
 namespace Shopware\Tests\Migration\Core\V6_7;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Migration\V6_7\Migration1765205483AddTrackOffcanvasCartToAnalytics;
 
 /**
@@ -29,20 +31,20 @@ class Migration1765205483AddTrackOffcanvasCartToAnalyticsTest extends TestCase
 
     public function testMigration(): void
     {
-        $this->rollback();
+        $schemaManager = $this->connection->createSchemaManager();
+        self::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->rollback($schemaManager);
+
         $migration = new Migration1765205483AddTrackOffcanvasCartToAnalytics();
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $existingColumns = $this->connection->createSchemaManager()->listTableColumns('sales_channel_analytics');
-        static::assertArrayHasKey('track_offcanvas_cart', $existingColumns);
+        self::assertTrue(DbTableHelper::columnExists($schemaManager, 'sales_channel_analytics', 'track_offcanvas_cart'));
     }
 
-    private function rollback(): void
+    private function rollback(MySQLSchemaManager $schemaManager): void
     {
-        $existingColumns = $this->connection->createSchemaManager()->listTableColumns('sales_channel_analytics');
-
-        if (\array_key_exists('track_offcanvas_cart', $existingColumns)) {
+        if (DbTableHelper::columnExists($schemaManager, 'sales_channel_analytics', 'track_offcanvas_cart')) {
             $this->connection->executeStatement('ALTER TABLE `sales_channel_analytics` DROP COLUMN `track_offcanvas_cart`;');
         }
     }

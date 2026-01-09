@@ -3,13 +3,14 @@
 namespace Shopware\Tests\Migration\Core\V6_7;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Log\Package;
-use Shopware\Core\Framework\Migration\AddColumnTrait;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelTestBehaviour;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\Migration\V6_7\Migration1728040170AddPrimaryOrderTransaction;
 use Shopware\Core\Test\TestDefaults;
@@ -21,7 +22,6 @@ use Shopware\Core\Test\TestDefaults;
 #[CoversClass(Migration1728040170AddPrimaryOrderTransaction::class)]
 class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
 {
-    use AddColumnTrait;
     use KernelTestBehaviour;
 
     private Connection $connection;
@@ -43,24 +43,21 @@ class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
 
     public function testMigration(): void
     {
-        $this->rollback();
+        $schemaManager = $this->connection->createSchemaManager();
+        static::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->rollback($schemaManager);
         $this->prepareOldDatabaseEntry();
 
         $this->migrate();
         $this->migrate();
 
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableColumns(OrderDefinition::ENTITY_NAME);
-
-        static::assertArrayHasKey('primary_order_transaction_id', $columns);
-        static::assertArrayHasKey('primary_order_transaction_version_id', $columns);
+        static::assertTrue(DbTableHelper::columnExists($schemaManager, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_id'));
+        static::assertTrue(DbTableHelper::columnExists($schemaManager, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_version_id'));
 
         $query = $this->connection->createQueryBuilder();
         $query->select('*');
         $query->from('`order`');
-        $result = $query->executeQuery()->fetchAllAssociative();
-
-        foreach ($result as $row) {
+        foreach ($query->executeQuery()->fetchAllAssociative() as $row) {
             static::assertNotNull($row['primary_order_transaction_id']);
             static::assertNotNull($row['primary_order_transaction_version_id']);
         }
@@ -68,24 +65,21 @@ class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
 
     public function testMigrationWithoutTransaction(): void
     {
-        $this->rollback();
+        $schemaManager = $this->connection->createSchemaManager();
+        static::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->rollback($schemaManager);
         $this->prepareOldDatabaseEntry(false);
 
         $this->migrate();
         $this->migrate();
 
-        $manager = $this->connection->createSchemaManager();
-        $columns = $manager->listTableColumns(OrderDefinition::ENTITY_NAME);
-
-        static::assertArrayHasKey('primary_order_transaction_id', $columns);
-        static::assertArrayHasKey('primary_order_transaction_version_id', $columns);
+        static::assertTrue(DbTableHelper::columnExists($schemaManager, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_id'));
+        static::assertTrue(DbTableHelper::columnExists($schemaManager, OrderDefinition::ENTITY_NAME, 'primary_order_transaction_version_id'));
 
         $query = $this->connection->createQueryBuilder();
         $query->select('*');
         $query->from('`order`');
-        $result = $query->executeQuery()->fetchAllAssociative();
-
-        foreach ($result as $row) {
+        foreach ($query->executeQuery()->fetchAllAssociative() as $row) {
             static::assertNull($row['primary_order_transaction_id']);
             static::assertNull($row['primary_order_transaction_version_id']);
         }
@@ -114,7 +108,7 @@ class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
                     'taxStatus' => 'gross',
                     'totalPrice' => 100,
                     'positionPrice' => 1,
-                ]),
+                ], \JSON_THROW_ON_ERROR),
                 'currency_id' => Uuid::fromHexToBytes(Defaults::CURRENCY),
                 'state_id' => $stateId,
                 'language_id' => Uuid::fromHexToBytes(Defaults::LANGUAGE_SYSTEM),
@@ -148,15 +142,15 @@ class Migration1728040170AddPrimaryOrderTransactionTest extends TestCase
         (new Migration1728040170AddPrimaryOrderTransaction())->update($this->connection);
     }
 
-    private function rollback(): void
+    private function rollback(MySQLSchemaManager $schemaManager): void
     {
         $this->dropIndexIfExists($this->connection, 'order', 'uidx.order.primary_order_transaction');
 
-        if ($this->columnExists($this->connection, 'order', 'primary_order_transaction_id')) {
+        if (DbTableHelper::columnExists($schemaManager, 'order', 'primary_order_transaction_id')) {
             $this->connection->executeStatement('ALTER TABLE `order` DROP COLUMN `primary_order_transaction_id`');
         }
 
-        if ($this->columnExists($this->connection, 'order', 'primary_order_transaction_version_id')) {
+        if (DbTableHelper::columnExists($schemaManager, 'order', 'primary_order_transaction_version_id')) {
             $this->connection->executeStatement('ALTER TABLE `order` DROP COLUMN `primary_order_transaction_version_id`');
         }
     }

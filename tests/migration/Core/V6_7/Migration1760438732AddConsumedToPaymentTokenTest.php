@@ -3,9 +3,11 @@
 namespace Shopware\Tests\Migration\Core\V6_7;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Migration\V6_7\Migration1760438732AddConsumedToPaymentToken;
 
 /**
@@ -29,20 +31,19 @@ class Migration1760438732AddConsumedToPaymentTokenTest extends TestCase
 
     public function testMigration(): void
     {
-        $this->rollback();
+        $schemaManager = $this->connection->createSchemaManager();
+        static::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->rollback($schemaManager);
         $migration = new Migration1760438732AddConsumedToPaymentToken();
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $existingColumns = $this->connection->createSchemaManager()->listTableColumns('payment_token');
-        static::assertArrayHasKey('consumed', $existingColumns);
+        static::assertTrue(DbTableHelper::columnExists($schemaManager, 'payment_token', 'consumed'));
     }
 
-    private function rollback(): void
+    private function rollback(MySQLSchemaManager $schemaManager): void
     {
-        $existingColumns = $this->connection->createSchemaManager()->listTableColumns('payment_token');
-
-        if (\array_key_exists('consumed', $existingColumns)) {
+        if (DbTableHelper::columnExists($schemaManager, 'payment_token', 'consumed')) {
             $this->connection->executeStatement('ALTER TABLE `payment_token` DROP COLUMN `consumed`;');
         }
     }

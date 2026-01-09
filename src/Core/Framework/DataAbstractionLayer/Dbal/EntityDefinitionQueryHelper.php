@@ -22,7 +22,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Field\TranslatedField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\VersionField;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\CriteriaPartInterface;
+use Shopware\Core\Framework\Feature;
 use Shopware\Core\Framework\Log\Package;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Framework\Uuid\Uuid;
 
 /**
@@ -45,18 +47,31 @@ class EntityDefinitionQueryHelper
         return '`' . $string . '`';
     }
 
+    /**
+     * @param non-empty-string $table
+     *
+     * @deprecated tag:v6.8.0 - Will be removed. Use {@see DbTableHelper::columnExists} instead
+     */
     public static function columnExists(Connection $connection, string $table, string $column): bool
     {
-        $exists = $connection->fetchOne(
-            'SHOW COLUMNS FROM ' . self::escape($table) . ' WHERE `Field` LIKE :column',
-            ['column' => $column]
+        Feature::triggerDeprecationOrThrow(
+            'v6.8.0.0',
+            Feature::deprecatedMethodMessage(self::class, __METHOD__, 'v6.8.0.0', 'Use DbTableHelper::columnExists instead')
         );
 
-        return !empty($exists);
+        return DbTableHelper::columnExists($connection->createSchemaManager(), $table, $column);
     }
 
+    /**
+     * @deprecated tag:v6.8.0 - Will be removed as it is unused
+     */
     public static function columnIsNullable(Connection $connection, string $table, string $column): bool
     {
+        Feature::triggerDeprecationOrThrow(
+            'v6.8.0.0',
+            Feature::deprecatedMethodMessage(self::class, __METHOD__, 'v6.8.0.0')
+        );
+
         $exists = $connection->fetchOne(
             'SHOW COLUMNS FROM ' . self::escape($table) . ' WHERE `Field` LIKE :column AND `Null` = "YES"',
             ['column' => $column]
@@ -65,16 +80,17 @@ class EntityDefinitionQueryHelper
         return !empty($exists);
     }
 
+    /**
+     * @deprecated tag:v6.8.0 - Will be removed. Use {@see DbTableHelper::tableExists} instead
+     */
     public static function tableExists(Connection $connection, string $table): bool
     {
-        return !empty(
-            $connection->fetchOne(
-                'SHOW TABLES LIKE :table',
-                [
-                    'table' => $table,
-                ]
-            )
+        Feature::triggerDeprecationOrThrow(
+            'v6.8.0.0',
+            Feature::deprecatedMethodMessage(self::class, __METHOD__, 'v6.8.0.0', 'Use DbTableHelper::tableExists instead')
         );
+
+        return DbTableHelper::tableExists($connection->createSchemaManager(), $table);
     }
 
     /**

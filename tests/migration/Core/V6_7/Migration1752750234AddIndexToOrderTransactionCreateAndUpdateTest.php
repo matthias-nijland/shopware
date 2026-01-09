@@ -3,10 +3,12 @@
 namespace Shopware\Tests\Migration\Core\V6_7;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Schema\MySQLSchemaManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Test\TestCaseBase\KernelLifecycleManager;
+use Shopware\Core\Framework\Util\DbTableHelper;
 use Shopware\Core\Migration\V6_7\Migration1752750234AddIndexToOrderTransactionCreateAndUpdate;
 
 /**
@@ -31,22 +33,20 @@ class Migration1752750234AddIndexToOrderTransactionCreateAndUpdateTest extends T
 
     public function testMigration(): void
     {
-        $this->rollback();
+        $schemaManager = $this->connection->createSchemaManager();
+        static::assertInstanceOf(MySQLSchemaManager::class, $schemaManager);
+        $this->rollback($schemaManager);
 
         $migration = new Migration1752750234AddIndexToOrderTransactionCreateAndUpdate();
         $migration->update($this->connection);
         $migration->update($this->connection);
 
-        $existingIndexes = $this->connection->createSchemaManager()->listTableIndexes('order_transaction');
-
-        static::assertArrayHasKey('idx.order_transaction_created_updated', $existingIndexes);
+        static::assertTrue(DbTableHelper::indexExists($schemaManager, 'order_transaction', 'idx.order_transaction_created_updated'));
     }
 
-    private function rollback(): void
+    private function rollback(MySQLSchemaManager $schemaManager): void
     {
-        $existingIndexes = $this->connection->createSchemaManager()->listTableIndexes('order_transaction');
-
-        if (isset($existingIndexes['idx.order_transaction_created_updated'])) {
+        if (DbTableHelper::indexExists($schemaManager, 'order_transaction', 'idx.order_transaction_created_updated')) {
             $this->connection->executeStatement('DROP INDEX `idx.order_transaction_created_updated` ON `order_transaction`');
         }
     }

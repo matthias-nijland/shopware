@@ -3,9 +3,9 @@
 namespace Shopware\Elasticsearch\Migration\V6_5;
 
 use Doctrine\DBAL\Connection;
-use Shopware\Core\Framework\DataAbstractionLayer\Dbal\EntityDefinitionQueryHelper;
 use Shopware\Core\Framework\Log\Package;
 use Shopware\Core\Framework\Migration\MigrationStep;
+use Shopware\Core\Framework\Util\DbTableHelper;
 
 /**
  * @internal
@@ -20,7 +20,7 @@ class Migration1689083660ElasticsearchIndexTask extends MigrationStep
 
     public function update(Connection $connection): void
     {
-        if (EntityDefinitionQueryHelper::tableExists($connection, 'elasticsearch_index_task')) {
+        if (DbTableHelper::tableExists($connection->createSchemaManager(), 'elasticsearch_index_task')) {
             return;
         }
 

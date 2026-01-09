@@ -3,12 +3,13 @@
 namespace Shopware\Core\Framework\Migration;
 
 use Doctrine\DBAL\Connection;
+use Shopware\Core\Framework\Util\DbTableHelper;
 
 trait AddColumnTrait
 {
-    use ColumnExistsTrait;
-
     /**
+     * @param non-empty-string $table
+     *
      * @return bool true if the column was created, false if it already exists
      */
     protected function addColumn(
@@ -19,7 +20,7 @@ trait AddColumnTrait
         bool $nullable = true,
         string $default = 'NULL'
     ): bool {
-        if ($this->columnExists($connection, $table, $column)) {
+        if (DbTableHelper::columnExists($connection->createSchemaManager(), $table, $column)) {
             return false;
         }
 
