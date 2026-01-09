@@ -128,6 +128,11 @@ export default Shopware.Component.wrapComponentConfig({
 
             return Math.round((uploaded / total) * 100);
         },
+        processedUploadCount() {
+            return Array.from(this.uploads.values()).filter((fileInfo) => {
+                return fileInfo.status === UploadStatus.FINISHED || fileInfo.status === UploadStatus.FAILED;
+            }).length;
+        },
         uploadComplete() {
             return (
                 this.uploadProgress >= 100 ||
@@ -135,12 +140,22 @@ export default Shopware.Component.wrapComponentConfig({
                     Array.from(this.uploads.values()).filter((info) => info.status === UploadStatus.FAILED).length
             );
         },
+        snackbarMessage(): string {
+            const { uploadCount, uploadProgress, processedUploadCount } = this;
+
+            return this.$t('global.sw-media-upload.snackbar.message', {
+                count: uploadCount,
+                progress: uploadProgress,
+                processed: processedUploadCount,
+                total: uploadCount,
+            });
+        },
         snackbarConfig(): Snackbar {
             const { uploadCount, uploadProgress } = this;
 
             const config: Snackbar = {
                 id: 'media-upload-status',
-                message: this.$t('global.sw-media-upload.snackbar.message', { count: uploadCount }),
+                message: this.snackbarMessage,
                 variant: 'progress',
                 progressPercentage: uploadProgress,
                 duration: 0,

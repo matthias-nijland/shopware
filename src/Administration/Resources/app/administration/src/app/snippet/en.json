@@ -465,7 +465,7 @@
       "buttonSwitchToUrlUpload": "Upload file from URL",
       "buttonOpenMedia": "Open media",
       "snackbar": {
-        "message": "Uploading file | Uploading files",
+        "message": "Uploading file | Uploading files ({processed}/{total})",
         "errorMessage": "File could not be uploaded. | Some files could not be uploaded."
       },
       "notification": {
