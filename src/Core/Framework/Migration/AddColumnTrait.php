@@ -7,6 +7,8 @@ use Shopware\Core\Framework\Util\DbTableHelper;
 
 trait AddColumnTrait
 {
+    use ColumnExistsTrait;
+
     /**
      * @param non-empty-string $table
      *
