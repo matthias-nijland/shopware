@@ -120,7 +120,11 @@ async function createWrapper() {
             mocks: {
                 $t: (key, params = {}) => {
                     if (key === 'global.sw-media-upload.snackbar.message') {
-                        return `Uploading ${params.count} file(s)`;
+                        if (params.count === 1) {
+                            return 'Uploading file';
+                        }
+
+                        return `Uploading files (${params.processed}/${params.total})`;
                     }
                     if (key === 'global.sw-media-upload.snackbar.errorMessage') {
                         return `${params.count} upload(s) failed`;
@@ -266,6 +270,29 @@ describe('src/app/component/utils/sw-upload-status', () => {
 
         wrapper.vm.onUploadEvent(createUploadFinishedEvent('target-3'));
         expect(wrapper.vm.uploadProgress).toBe(100);
+    });
+
+    it('should use singular snackbar message for a single upload', async () => {
+        const file = createFile();
+        const tasks = [createUploadTask('target-123', file)];
+
+        wrapper.vm.onUploadEvent(createUploadAddedEvent(tasks));
+
+        expect(wrapper.vm.snackbarMessage).toBe('Uploading file');
+    });
+
+    it('should include processed count in snackbar message for multiple uploads', async () => {
+        const file1 = createFile('test1.jpg', 'content');
+        const file2 = createFile('test2.jpg', 'content2');
+
+        const tasks = [
+            createUploadTask('target-123', file1),
+            createUploadTask('target-456', file2),
+        ];
+        wrapper.vm.onUploadEvent(createUploadAddedEvent(tasks));
+        wrapper.vm.onUploadEvent(createUploadFinishedEvent('target-123'));
+
+        expect(wrapper.vm.snackbarMessage).toBe('Uploading files (1/2)');
     });
 
     it('should detect upload complete when all uploads finished', async () => {
